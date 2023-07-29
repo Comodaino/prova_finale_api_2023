@@ -63,7 +63,7 @@ int add_station(char *token, station_t **stations_table) {
         stations_table[hash_function(distance)] = new_station;
         return 0;
     }
-    while (tmp->next != NULL && tmp->distance >= distance) {
+    while (tmp != NULL && tmp->distance >= distance) {
         if (tmp->distance == distance) return 1;
         tmp = tmp->next;
     }

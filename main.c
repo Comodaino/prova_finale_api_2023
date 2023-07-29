@@ -12,8 +12,12 @@ typedef struct Station {
 } station_t;
 
 void print_stations(station_t **stations_table_ptr);
+
 int hash_function(ulong);
-int add_station(char *token, station_t **stations_table_ptr);
+
+int add_station(char *token, station_t **stations_table);
+
+int remove_station(char *token, station_t **stations_table);
 
 int main() {
     char *input;
@@ -25,8 +29,10 @@ int main() {
         if (strcmp(token, "aggiungi-stazione") == 0) {
             if (add_station(token, stations_table) == 0) printf("aggiunta\n");
             else printf("non aggiunta\n");
-            print_stations(stations_table);
+            //print_stations(stations_table);
         } else if (strcmp(token, "demolisci-stazione") == 0) {
+            if (remove_station(token, stations_table) == 0) printf("demolita\n");
+            else printf("non demolita\n");
             // do something else
         } else if (strcmp(token, "aggiungi-auto") == 0) {
             // do something else
@@ -35,6 +41,7 @@ int main() {
         } else if (strcmp(token, "pianifica-percorso") == 0) {
             // do something else
         }
+        print_stations(stations_table);
     }
 }
 
@@ -51,7 +58,6 @@ int add_station(char *token, station_t **stations_table) {
 
     tmp = stations_table[hash_function(distance)];
     if (tmp == NULL) {
-        printf("DEBUG");
         new_station->distance = distance;
         new_station->visited = 0;
         token = strtok(NULL, " ");
@@ -63,10 +69,27 @@ int add_station(char *token, station_t **stations_table) {
         stations_table[hash_function(distance)] = new_station;
         return 0;
     }
-    while (tmp != NULL && tmp->distance >= distance) {
+
+    if(tmp->distance < distance){
+        new_station->next = tmp;
+        new_station->distance = distance;
+        new_station->visited = 0;
+        token = strtok(NULL, " ");
+        n_auto = atoi(token);
+        for (i = 0; token != NULL && i < n_auto; i++) {
+            token = strtok(NULL, " ");
+            new_station->parked_cars[i] = strtol(token, trash_can, 10);
+        }
+        stations_table[hash_function(distance)] = new_station;
+        return 0;
+    }
+
+    while (tmp != NULL && tmp->distance > distance) {
+
         if (tmp->distance == distance) return 1;
         tmp = tmp->next;
     }
+    if(tmp->distance > distance) printf("quitted");
     new_station->distance = distance;
     new_station->visited = 0;
     token = strtok(NULL, " ");
@@ -76,7 +99,7 @@ int add_station(char *token, station_t **stations_table) {
         new_station->parked_cars[i] = strtol(token, trash_can, 10);
     }
 
-    while (tmp->next != NULL && tmp->distance >= distance) {
+    while (tmp->next != NULL && tmp->distance > distance) {
     }
     if (tmp->next == NULL) {
         tmp->next = new_station;
@@ -87,6 +110,35 @@ int add_station(char *token, station_t **stations_table) {
     }
     return 0;
 
+}
+
+
+int remove_station(char *token, station_t **stations_table) {
+    ulong distance = 0;
+    station_t *tmp, *prv;
+    token = strtok(NULL, " ");
+    distance = strtol(token, NULL, 10);
+    tmp = stations_table[hash_function(distance)];
+    if (tmp == NULL) {
+        return 1;
+    }
+    if (tmp->distance == distance) {
+        stations_table[hash_function(distance)] = tmp->next;
+        free(tmp);
+        return 0;
+    }
+    prv = tmp;
+    tmp = tmp->next;
+    while (tmp != NULL && tmp->distance >= distance) {
+        if (tmp->distance == distance) {
+            prv->next = tmp->next;
+            free(tmp);
+            return 0;
+        }
+        prv = tmp;
+        tmp = tmp->next;
+    }
+    return 1;
 }
 
 int hash_function(ulong x) {
@@ -103,19 +155,26 @@ int hash_function(ulong x) {
 }
 
 
-void print_stations(station_t **stations_table){
-    printf("Stations:");
-    int i=0;
-    station_t* tmp;
-    for(i=0; i<1000; i++){
-        if(stations_table[i] != NULL){
+void print_stations(station_t **stations_table) {
+    printf("Stations:\n");
+    int i = 0;
+    station_t *tmp;
+    for (i = 0; i < 1000; i++) {
+        if (stations_table[i] != NULL) {
+            printf("[%d]: ", i);
             tmp = stations_table[i];
-            while(tmp!=NULL){
+            while (tmp != NULL) {
                 printf(" %lu", tmp->distance);
                 tmp = tmp->next;
             }
+            printf("\n");
         }
     }
+    printf("\n");
 }
 
-//aggiungi-stazione 10 2 100 200
+/*
+ * aggiungi-stazione 10 2 100 200
+ * demolisci-stazione 10
+ *
+ * */

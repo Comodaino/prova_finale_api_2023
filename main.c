@@ -267,6 +267,12 @@ int path_planner(char *token, station_t **stations_table) {
 void add_list(ulong val, solution_t *head) {
     solution_t *current = head, *tmp;
 
+    if(current == NULL){
+        head = (solution_t *) malloc(sizeof(solution_t));
+        head->next = NULL;
+        head->station = val;
+        return;
+    }
 
     while (current->next != NULL && current->next->station > val) {
         current = current->next;

@@ -25,7 +25,7 @@ int add_car(char *token, station_t **stations_table);
 int main() {
     char *input;
     input = malloc(SIZE);
-    station_t *stations_table[1000] = {NULL};
+    station_t *stations_table[1000] = {0};
 
     while (fgets(input, SIZE, stdin)) {
         char *token = strtok(input, " ");
@@ -54,9 +54,8 @@ int main() {
 int add_station(char *token, station_t **stations_table) {
     ulong distance = 0, autonomy = 0;
     int n_auto = 0;
-    char *trash_can;
     int i = 0, j = 0, first = 0;
-    ulong tmp_cars[512] = {NULL};
+    ulong tmp_cars[512] = {0};
     station_t *tmp, *tmp2;
     station_t *new_station = malloc(sizeof(station_t));
     token = strtok(NULL, " ");
@@ -70,12 +69,12 @@ int add_station(char *token, station_t **stations_table) {
     n_auto = atoi(token);
     for (i = 0; token != NULL && i < n_auto; i++) {
         token = strtok(NULL, " ");
-        autonomy = strtol(token, trash_can, 10);
+        autonomy = strtol(token, NULL, 10);
 
-        if (new_station->parked_cars[0] == NULL) new_station->parked_cars[0] = autonomy;
+        if (new_station->parked_cars[0] == 0) new_station->parked_cars[0] = autonomy;
         else {
             first = 1;
-            for (j = 0; new_station->parked_cars[j] != NULL; j++) {
+            for (j = 0; new_station->parked_cars[j] != 0; j++) {
                 if (new_station->parked_cars[j] == autonomy) {
                     first = -1;
                     break;
@@ -90,14 +89,14 @@ int add_station(char *token, station_t **stations_table) {
             }
             tmp_cars[j] = new_station->parked_cars[j - 1];
             if (first != -1) {
-                for (j = 0; tmp_cars[j] != NULL; j++) {
+                for (j = 0; tmp_cars[j] != 0; j++) {
                     new_station->parked_cars[j] = tmp_cars[j];
                 }
             }
         }
     }
 
-    if (tmp == NULL) {
+    if (tmp == 0) {
         stations_table[hash_function(distance)] = new_station;
         return 0;
     }
@@ -106,11 +105,11 @@ int add_station(char *token, station_t **stations_table) {
         stations_table[hash_function(distance)] = new_station;
         return 0;
     }
-    while (tmp != NULL && tmp->distance >= distance) {
+    while (tmp != 0 && tmp->distance >= distance) {
         if (tmp->distance == distance) return 1;
         tmp = tmp->next;
     }
-    if (tmp->next == NULL) {
+    if (tmp->next == 0) {
         tmp->next = new_station;
     } else {
         tmp2 = tmp->next;
@@ -128,7 +127,7 @@ int remove_station(char *token, station_t **stations_table) {
     token = strtok(NULL, " ");
     distance = strtol(token, NULL, 10);
     tmp = stations_table[hash_function(distance)];
-    if (tmp == NULL) {
+    if (tmp == 0) {
         return 1;
     }
     if (tmp->distance == distance) {
@@ -138,7 +137,7 @@ int remove_station(char *token, station_t **stations_table) {
     }
     prv = tmp;
     tmp = tmp->next;
-    while (tmp != NULL && tmp->distance >= distance) {
+    while (tmp != 0 && tmp->distance >= distance) {
         if (tmp->distance == distance) {
             prv->next = tmp->next;
             free(tmp);
@@ -151,24 +150,24 @@ int remove_station(char *token, station_t **stations_table) {
 }
 
 int add_car(char *token, station_t **stations_table) {
-    int i = 0, j = 0, k = 0, first = 1;
+    int i = 0, first = 1;
     ulong distance = 0, new_car = 0;
-    ulong tmp_cars[512] = {NULL};
+    ulong tmp_cars[512] = {0};
     station_t *tmp;
     token = strtok(NULL, " ");
     distance = strtol(token, NULL, 10);
     token = strtok(NULL, " ");
     new_car = strtol(token, NULL, 10);
     tmp = stations_table[hash_function(distance)];
-    if (tmp == NULL) return 1;
-    while (tmp != NULL && tmp->distance >= strtol(token, NULL, 10)) {
+    if (tmp == 0) return 1;
+    while (tmp != 0 && tmp->distance >= strtol(token, NULL, 10)) {
         if (tmp->distance == distance) break;
         tmp = tmp->next;
     }
     if (tmp->distance != distance) return 1;
 
 
-    for (i = 0; tmp->parked_cars[i] != NULL; i++) {
+    for (i = 0; tmp->parked_cars[i] != 0; i++) {
         if (tmp->parked_cars[i] == new_car) return 1;
         if (tmp->parked_cars[i] > new_car) tmp_cars[i] = tmp->parked_cars[i];
         if (tmp->parked_cars[i] < new_car) {
@@ -179,19 +178,19 @@ int add_car(char *token, station_t **stations_table) {
         }
     }
     tmp_cars[i] = tmp->parked_cars[i - 1];
-    for (i = 0; tmp_cars[i] != NULL; i++) {
+    for (i = 0; tmp_cars[i] != 0; i++) {
         tmp->parked_cars[i] = tmp_cars[i];
     }
-
+    return 0;
 }
 
 int hash_function(ulong x) {
     int tmp = 0, i = 0;
-    char int_str[20] = {NULL};
-    sprintf(int_str, "%d", x);
+    char int_str[20] = {0};
+    sprintf(int_str, "%ld", x);
     if (x == 0) return 0;
     for (i = 0; i < 3; i++) {
-        if (int_str[i] != NULL) {
+        if (int_str[i] != 0) {
             tmp = int_str[i] - 48 + tmp * 10;
         }
     }
@@ -204,12 +203,12 @@ void print_stations(station_t **stations_table) {
     int i = 0, j = 0;
     station_t *tmp;
     for (i = 0; i < 1000; i++) {
-        if (stations_table[i] != NULL) {
+        if (stations_table[i] != 0) {
             printf("[%d]: ", i);
             tmp = stations_table[i];
-            while (tmp != NULL) {
+            while (tmp != 0) {
                 printf(" %lu(", tmp->distance);
-                for (j = 0; tmp->parked_cars[j] != NULL; j++) printf(" %lu ", tmp->parked_cars[j]);
+                for (j = 0; tmp->parked_cars[j] != 0; j++) printf(" %lu ", tmp->parked_cars[j]);
                 printf(")");
                 tmp = tmp->next;
             }

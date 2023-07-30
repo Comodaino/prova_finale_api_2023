@@ -21,6 +21,7 @@ int remove_station(char *token, station_t **stations_table);
 
 int add_car(char *token, station_t **stations_table);
 
+int remove_car(char *token, station_t **stations_table);
 
 int main() {
     char *input;
@@ -42,7 +43,9 @@ int main() {
             else printf("non aggiunta\n");
 
         } else if (strcmp(token, "rottama-auto") == 0) {
-            // do something else
+            if (remove_car(token, stations_table) == 0) printf("rottamata\n");
+            else printf("non rottamata\n");
+
         } else if (strcmp(token, "pianifica-percorso") == 0) {
             // do something else
         }
@@ -184,6 +187,40 @@ int add_car(char *token, station_t **stations_table) {
     return 0;
 }
 
+int remove_car(char *token, station_t **stations_table) {
+    int i = 0, first = 1;
+    ulong distance = 0, new_car = 0;
+    ulong tmp_cars[512] = {0};
+    station_t *tmp;
+    token = strtok(NULL, " ");
+    distance = strtol(token, NULL, 10);
+    token = strtok(NULL, " ");
+    new_car = strtol(token, NULL, 10);
+    tmp = stations_table[hash_function(distance)];
+    if (tmp == 0) return 1;
+    while (tmp != 0 && tmp->distance >= strtol(token, NULL, 10)) {
+        if (tmp->distance == distance) break;
+        tmp = tmp->next;
+    }
+    if (tmp->distance != distance) return 1;
+
+    for (i = 0; tmp->parked_cars[i] != 0; i++) {
+        if (tmp->parked_cars[i] > new_car) tmp_cars[i] = tmp->parked_cars[i];
+        if(tmp->parked_cars[i] == new_car) first = 0;
+        if (tmp->parked_cars[i] < new_car) {
+            if (first == 0) {
+                tmp_cars[i-1] = tmp->parked_cars[i];
+            } else return 1;
+        }
+    }
+
+    for (i = 0; tmp->parked_cars[i]!= 0; i++) {
+        tmp->parked_cars[i] = tmp_cars[i];
+    }
+    //tmp_cars[i] = tmp->parked_cars[i];
+    return 0;
+}
+
 int hash_function(ulong x) {
     int tmp = 0, i = 0;
     char int_str[20] = {0};
@@ -222,5 +259,6 @@ void print_stations(station_t **stations_table) {
  * aggiungi-stazione 10 2 100 200
  * demolisci-stazione 10
  * aggiungi-auto 10 300
+ * rottama-auto 10 300
  *
  * */

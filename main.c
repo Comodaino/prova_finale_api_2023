@@ -25,7 +25,7 @@ int remove_station(char *token, station_t **stations_table);
 
 int add_car(char *token, station_t **stations_table);
 
-//int remove_car(char *token, station_t **stations_table);
+int remove_car(char *token, station_t **stations_table);
 
 //int path_planner(char *token, station_t **stations_table);
 
@@ -52,11 +52,11 @@ int main() {
             if (add_car(token, stations_table) == 0) printf("aggiunta\n");
             else printf("non aggiunta\n");
 
-        } /*else if (strcmp(token, "rottama-auto") == 0) {
+        } else if (strcmp(token, "rottama-auto") == 0) {
             if (remove_car(token, stations_table) == 0) printf("rottamata\n");
             else printf("non rottamata\n");
 
-        } */else if (strcmp(token, "pianifica-percorso") == 0) {
+        } else if (strcmp(token, "pianifica-percorso") == 0) {
             // do something else
         }
         print_stations(stations_table);
@@ -161,7 +161,7 @@ int add_car(char *token, station_t **stations_table) {
     new_car = strtol(token, NULL, 10);
     tmp = stations_table[distance];
     if (tmp == NULL) return 1;
-    if(tmp->parked_cars[0] == 0){
+    if (tmp->parked_cars[0] == 0) {
         tmp->parked_cars[0] = new_car;
         return 0;
     }
@@ -191,23 +191,19 @@ int add_car(char *token, station_t **stations_table) {
     return 0;
 }
 
-/*
+
 int remove_car(char *token, station_t **stations_table) {
     int i = 0, first = 1;
     ulong distance = 0, new_car = 0;
     ulong tmp_cars[512] = {0};
     station_t *tmp;
+    solution_t *tmp2;
     token = strtok(NULL, " ");
     distance = strtol(token, NULL, 10);
     token = strtok(NULL, " ");
     new_car = strtol(token, NULL, 10);
-    tmp = stations_table[hash_function(distance)];
-    if (tmp == 0) return 1;
-    while (tmp != 0 && tmp->distance >= strtol(token, NULL, 10)) {
-        if (tmp->distance == distance) break;
-        tmp = tmp->next;
-    }
-    if (tmp->distance != distance) return 1;
+    tmp = stations_table[distance];
+    if (tmp == NULL) return 1;
 
     for (i = 0; tmp->parked_cars[i] != 0; i++) {
         if (tmp->parked_cars[i] > new_car) tmp_cars[i] = tmp->parked_cars[i];
@@ -222,11 +218,20 @@ int remove_car(char *token, station_t **stations_table) {
     for (i = 0; tmp->parked_cars[i] != 0; i++) {
         tmp->parked_cars[i] = tmp_cars[i];
     }
-    //tmp_cars[i] = tmp->parked_cars[i];
+    tmp = stations_table[distance];
+
+    tmp2 = tmp->reachable;
+
+    while (tmp2 != NULL && tmp->reachable != NULL) {
+        if (tmp2->station > distance + tmp->parked_cars[0]) {
+            tmp->reachable = remove_list(tmp2->station, tmp->reachable);
+        }
+            tmp2 = tmp2->next;
+    }
+
     return 0;
 }
 
-*/
 
 /*
 int path_planner(char *token, station_t **stations_table) {
@@ -256,14 +261,14 @@ int path_planner(char *token, station_t **stations_table) {
 solution_t *add_list(ulong val, solution_t *head) {
     solution_t *current = head, *tmp;
 
-    if(head == NULL){
+    if (head == NULL) {
         head = (solution_t *) malloc(sizeof(solution_t));
         head->next = NULL;
         head->station = val;
         return head;
     }
-    if(head->station == val) return head;
-    if(head->station < val){
+    if (head->station == val) return head;
+    if (head->station < val) {
         tmp = (solution_t *) malloc(sizeof(solution_t));
         tmp->next = head;
         tmp->station = val;
@@ -271,12 +276,11 @@ solution_t *add_list(ulong val, solution_t *head) {
     }
 
     while (current->next != NULL && current->next->station > val) {
-        if(current->station == val) return head;
+        if (current->station == val) return head;
         tmp = current;
         current = current->next;
     }
-    if(current->station == val) return head;
-
+    if (current->station == val) return head;
     tmp = (solution_t *) malloc(sizeof(solution_t));
     tmp->next = current->next;
     current->next = tmp;
@@ -286,8 +290,13 @@ solution_t *add_list(ulong val, solution_t *head) {
 
 solution_t *remove_list(ulong val, solution_t *head) {
     solution_t *current = head, *tmp;
-    if(current->station == val){
-        head = current->next;
+    if (head->station == val) {
+
+        head = head->next;
+
+
+
+        current->next = NULL;
         free(current);
         return head;
     }
@@ -299,9 +308,12 @@ solution_t *remove_list(ulong val, solution_t *head) {
     }
 
     if (current->station == val) {
+
         tmp->next = current->next;
+        current->next = NULL;
         free(current);
     }
+
     return head;
 
 }
@@ -318,11 +330,10 @@ void print_stations(station_t **stations_table) {
             printf(") reachable:");
 
             tmp = stations_table[i]->reachable;
-            while(tmp!=NULL){
+            while (tmp != NULL) {
                 printf(" %lu", tmp->station);
                 tmp = tmp->next;
             }
-
             printf("\n");
         }
     }
@@ -331,8 +342,9 @@ void print_stations(station_t **stations_table) {
 
 /*
  * aggiungi-stazione 10 2 100 200
+ * aggiungi-stazione 200 2 100 200
  * demolisci-stazione 10
  * aggiungi-auto 10 300
- * rottama-auto 10 300
+ * rottama-auto 10 200
  *
  * */

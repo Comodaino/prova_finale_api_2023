@@ -6,5 +6,5 @@ C_DEFINES =
 
 C_INCLUDES = 
 
-C_FLAGS = -g -std=gnu99
+C_FLAGS =  -DEVAL -Wall -Werror -std=gnu11 -O2 -pipe -static -s -o -lm -g -std=gnu11
 

@@ -1,1 +1,1 @@
-/usr/bin/cc -g CMakeFiles/PFAPI.dir/main.c.o -o PFAPI 
+/usr/bin/cc  -DEVAL -Wall -Werror -std=gnu11 -O2 -pipe -static -s -o -lm -g CMakeFiles/PFAPI.dir/main.c.o -o PFAPI 

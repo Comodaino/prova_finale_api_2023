@@ -29,7 +29,7 @@ int remove_station(char *token, station_t **stations_table);
 
 //int path_planner(char *token, station_t **stations_table);
 
-void add_list(ulong x, solution_t *l);
+solution_t *add_list(ulong x, solution_t *l);
 
 void remove_list(ulong val, solution_t *head);
 
@@ -79,6 +79,7 @@ int add_station(char *token, station_t **stations_table) {
     new_station = malloc(sizeof(station_t));
     new_station->distance = distance;
     new_station->visited = 0;
+    new_station->reachable = NULL;
     token = strtok(NULL, " ");
     n_auto = atoi(token);
     for (i = 0; token != NULL && i < n_auto; i++) {
@@ -114,18 +115,19 @@ int add_station(char *token, station_t **stations_table) {
     for (i = distance - 1; i >= 0; i--) {
         if (stations_table[i] != NULL) {
             tmp = stations_table[i];
-            if (tmp->parked_cars[0] + tmp->distance >= distance) add_list(distance, tmp->reachable);
+            if (tmp->parked_cars[0] + tmp->distance >= distance) tmp->reachable = add_list(distance, tmp->reachable);
 
         }
     }
 
     for (i = distance; i < distance + new_station->parked_cars[0]; i++) {
         if (stations_table[i] != NULL) {
-            add_list(i, new_station->reachable);
+            new_station->reachable = add_list(i, new_station->reachable);
         }
     }
 
     stations_table[distance] = new_station;
+
     return 0;
 }
 
@@ -217,28 +219,6 @@ int remove_car(char *token, station_t **stations_table) {
 
 */
 
-void print_stations(station_t **stations_table) {
-    printf("Stations:\n");
-    int i = 0, j = 0;
-    solution_t *tmp;
-    for (i = 0; i < 4096; i++) {
-        if (stations_table[i] != NULL) {
-            printf("[%d]: ", i);
-            for (j = 0; stations_table[i]->parked_cars[j] != 0; j++) printf(" %lu ", stations_table[i]->parked_cars[j]);
-            printf(") reachable:");
-
-            tmp = stations_table[i]->reachable;
-            while(tmp!=NULL){
-                printf(" %lu", tmp->station);
-                tmp = tmp->next;
-            }
-
-            printf("\n");
-        }
-    }
-    printf("\n");
-}
-
 /*
 int path_planner(char *token, station_t **stations_table) {
 
@@ -264,24 +244,28 @@ int path_planner(char *token, station_t **stations_table) {
 }
 */
 
-void add_list(ulong val, solution_t *head) {
+solution_t *add_list(ulong val, solution_t *head) {
     solution_t *current = head, *tmp;
 
-    if(current == NULL){
+    if(head == NULL){
         head = (solution_t *) malloc(sizeof(solution_t));
         head->next = NULL;
         head->station = val;
-        return;
+        return head;
     }
 
-    while (current->next != NULL && current->next->station > val) {
-        current = current->next;
+    if(head->station < val){
+        tmp = (solution_t *) malloc(sizeof(solution_t));
+        tmp->next = head;
+        tmp->station = val;
+        return tmp;
     }
 
     tmp = (solution_t *) malloc(sizeof(solution_t));
     tmp->next = current->next;
     current->next = tmp;
     tmp->station = val;
+    return head;
 }
 
 void remove_list(ulong val, solution_t *head) {
@@ -304,6 +288,28 @@ void remove_list(ulong val, solution_t *head) {
     }
 }
 
+
+void print_stations(station_t **stations_table) {
+    printf("Stations:\n");
+    int i = 0, j = 0;
+    solution_t *tmp;
+    for (i = 0; i < 4096; i++) {
+        if (stations_table[i] != NULL) {
+            printf("[%d]: (", i);
+            for (j = 0; stations_table[i]->parked_cars[j] != 0; j++) printf(" %lu ", stations_table[i]->parked_cars[j]);
+            printf(") reachable:");
+
+            tmp = stations_table[i]->reachable;
+            while(tmp!=NULL){
+                printf(" %lu", tmp->station);
+                tmp = tmp->next;
+            }
+
+            printf("\n");
+        }
+    }
+    printf("\n");
+}
 
 /*
  * aggiungi-stazione 10 2 100 200

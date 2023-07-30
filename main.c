@@ -31,7 +31,7 @@ int remove_station(char *token, station_t **stations_table);
 
 solution_t *add_list(ulong x, solution_t *l);
 
-void remove_list(ulong val, solution_t *head);
+solution_t *remove_list(ulong val, solution_t *head);
 
 int main() {
     char *input;
@@ -141,9 +141,11 @@ int remove_station(char *token, station_t **stations_table) {
 
     for (i = distance - 1; i >= 0; i--) {
         if (stations_table[i] != NULL) {
-            remove_list(distance, stations_table[i]->reachable);
+            stations_table[i]->reachable = remove_list(distance, stations_table[i]->reachable);
         }
     }
+
+    stations_table[distance] = NULL;
     return 0;
 }
 
@@ -268,12 +270,12 @@ solution_t *add_list(ulong val, solution_t *head) {
     return head;
 }
 
-void remove_list(ulong val, solution_t *head) {
+solution_t *remove_list(ulong val, solution_t *head) {
     solution_t *current = head, *tmp;
     if(current->station == val){
         head = current->next;
         free(current);
-        return;
+        return head;
     }
 
     tmp = current;
@@ -286,6 +288,8 @@ void remove_list(ulong val, solution_t *head) {
         tmp->next = current->next;
         free(current);
     }
+    return head;
+
 }
 
 

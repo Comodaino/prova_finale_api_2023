@@ -35,6 +35,8 @@ solution_t *add_list(ulong x, solution_t *l);
 
 solution_t *remove_list(ulong val, solution_t *head);
 
+solution_t *copy_list(solution_t *path);
+
 int main() {
     char *input;
     input = malloc(4096);
@@ -269,46 +271,51 @@ int path_planner(char *token, station_t **stations_table) {
     if (reachable == NULL) return 1;
     while (reachable != NULL) {
         current_path = add_list(reachable->station, current_path);
-        explore(stations_table, stations_table[reachable->station], &current_path, &current_solution, goal, &max_lenght, &current_lenght);
+        explore(stations_table, stations_table[reachable->station], &current_path, &current_solution, goal, &max_lenght,
+                &current_lenght);
         current_path = remove_list(reachable->station, current_path);
         reachable = reachable->next;
+
     }
     if (current_solution == NULL) return 1;
     printf("%lu", current_solution->station);
-
-    while(current_solution!=NULL){
-        //printf(" %lu", current_solution->station);
-
+    current_solution = current_solution->next;
+    while (current_solution->next != NULL) {
+        printf(" %lu", current_solution->station);
+        current_solution = current_solution->next;
     }
     printf("\n");
     return 0;
 }
 
-void explore(station_t **stations_table, station_t *node, solution_t **path, solution_t **solution, ulong goal, int *max_length_ptr, int *current_lenght_ptr) {
+void explore(station_t **stations_table, station_t *node, solution_t **path, solution_t **solution, ulong goal,
+             int *max_length_ptr, int *current_lenght_ptr) {
+
     *current_lenght_ptr = *current_lenght_ptr + 1;
     solution_t *tmp_s, *tmp_p, *reachable;
 
-    if (*max_length_ptr != -1  && *current_lenght_ptr > *max_length_ptr ) return;
+    if (*max_length_ptr != -1 && *current_lenght_ptr > *max_length_ptr) return;
     if (node == NULL) return;
 
 
     *path = add_list(node->distance, *path);
 
-    if(node->distance == goal){
-        if( *max_length_ptr==-1 || *current_lenght_ptr < *max_length_ptr){
-            free(*solution);
-            *solution = *path;
+    if (node->distance == goal) {
+        if (*max_length_ptr == -1 || *current_lenght_ptr < *max_length_ptr) {
+            if (*solution != NULL) free(*solution);
+            *solution = copy_list(*path);
             *max_length_ptr = *current_lenght_ptr;
+
             return;
         }
-        if(*current_lenght_ptr == *max_length_ptr){
+        if (*current_lenght_ptr == *max_length_ptr) {
             tmp_p = *path;
             tmp_s = *solution;
-            while(tmp_s != NULL && tmp_p != NULL){
-                if(stations_table[tmp_s->station]->distance < stations_table[tmp_p->station]->distance) return;
-                if(stations_table[tmp_s->station]->distance > stations_table[tmp_p->station]->distance){
+            while (tmp_s != NULL && tmp_p != NULL) {
+                if (stations_table[tmp_s->station]->distance < stations_table[tmp_p->station]->distance) return;
+                if (stations_table[tmp_s->station]->distance > stations_table[tmp_p->station]->distance) {
                     free(*solution);
-                    *solution = *path;
+                    *solution = copy_list(*path);
                     return;
                 }
             }
@@ -317,12 +324,13 @@ void explore(station_t **stations_table, station_t *node, solution_t **path, sol
         return;
     }
 
-    if(node->reachable == NULL) return;
+    if (node->reachable == NULL) return;
 
     reachable = node->reachable;
-    while(reachable!=NULL){
+    while (reachable != NULL) {
         *path = add_list(reachable->station, *path);
-        explore(stations_table, stations_table[reachable->station], path, solution, goal, max_length_ptr, current_lenght_ptr);
+        explore(stations_table, stations_table[reachable->station], path, solution, goal, max_length_ptr,
+                current_lenght_ptr);
         *path = remove_list(reachable->station, *path);
         reachable = reachable->next;
     }
@@ -385,6 +393,19 @@ solution_t *remove_list(ulong val, solution_t *head) {
 
     return head;
 
+}
+
+solution_t *copy_list(solution_t *path) {
+    solution_t *p, *head = (solution_t *) malloc(sizeof(solution_t));
+    p = head;
+    while (path != NULL) {
+        p->station = path->station;
+        p->next = (solution_t *) malloc(sizeof(solution_t));
+        p = p->next;
+        path = path->next;
+
+    }
+    return head;
 }
 
 

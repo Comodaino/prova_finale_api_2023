@@ -82,34 +82,35 @@ int add_station(char *token, station_t **stations_table) {
     new_station->reachable = NULL;
     token = strtok(NULL, " ");
     n_auto = atoi(token);
-    for (i = 0; token != NULL && i < n_auto; i++) {
-        token = strtok(NULL, " ");
+    token = strtok(NULL, " ");
+    new_station->parked_cars[0] = strtol(token, NULL, 10);
+    token = strtok(NULL, " ");
+    while (token != NULL) {
         autonomy = strtol(token, NULL, 10);
-
-        if (new_station->parked_cars[0] == 0) new_station->parked_cars[0] = autonomy;
-        else {
-            first = 1;
-            for (j = 0; new_station->parked_cars[j] != 0; j++) {
-                if (new_station->parked_cars[j] == autonomy) {
-                    first = -1;
-                    break;
-                }
-                if (new_station->parked_cars[j] > autonomy) tmp_cars[j] = new_station->parked_cars[j];
-                if (new_station->parked_cars[j] < autonomy) {
-                    if (first == 1) {
-                        tmp_cars[j] = autonomy;
-                        first = 0;
-                    } else tmp_cars[j] = new_station->parked_cars[j - 1];
-                }
+        first = 1;
+        for (i = 0; new_station->parked_cars[i] != 0 && i<n_auto; i++) {
+            if (new_station->parked_cars[i] == autonomy){
+                first = -1;
+                break;
             }
-            tmp_cars[j] = new_station->parked_cars[j - 1];
-            if (first != -1) {
-                for (j = 0; tmp_cars[j] != 0; j++) {
-                    new_station->parked_cars[j] = tmp_cars[j];
-                }
+            if (new_station->parked_cars[i] > autonomy) tmp_cars[i] = new_station->parked_cars[i];
+            if (new_station->parked_cars[i] < autonomy){
+                if(first == 1){
+                    first = 0;
+                    tmp_cars[i] = autonomy;
+                }else tmp_cars[i] = new_station->parked_cars[i-1];
             }
         }
+        if(first == 1) tmp_cars[i]=autonomy;
+            else tmp_cars[i] = new_station->parked_cars[i-1];
+        if (first != -1) {
+            for (j = 0; tmp_cars[j] != 0; j++) {
+                new_station->parked_cars[j] = tmp_cars[j];
+            }
+        }
+        token = strtok(NULL, " ");
     }
+
 
 
     for (i = distance - 1; i >= 0; i--) {
@@ -175,7 +176,9 @@ int add_car(char *token, station_t **stations_table) {
             } else tmp_cars[i] = tmp->parked_cars[i - 1];
         }
     }
-    tmp_cars[i] = tmp->parked_cars[i - 1];
+    if(first == 1) tmp_cars[i]=new_car;
+    else tmp_cars[i] = tmp->parked_cars[i - 1];;
+
     for (i = 0; tmp_cars[i] != 0; i++) {
         tmp->parked_cars[i] = tmp_cars[i];
     }
@@ -197,7 +200,7 @@ int remove_car(char *token, station_t **stations_table) {
     ulong distance = 0, new_car = 0;
     ulong tmp_cars[512] = {0};
     station_t *tmp;
-    solution_t *tmp2;
+    solution_t *tmp2, *tmp3;
     token = strtok(NULL, " ");
     distance = strtol(token, NULL, 10);
     token = strtok(NULL, " ");
@@ -221,12 +224,15 @@ int remove_car(char *token, station_t **stations_table) {
     tmp = stations_table[distance];
 
     tmp2 = tmp->reachable;
+    tmp3 = tmp2->next;
+    while (tmp2 != NULL) {
 
-    while (tmp2 != NULL && tmp->reachable != NULL) {
         if (tmp2->station > distance + tmp->parked_cars[0]) {
             tmp->reachable = remove_list(tmp2->station, tmp->reachable);
         }
-            tmp2 = tmp2->next;
+        tmp2 = tmp3;
+        if (tmp2 == NULL) break;
+        tmp3 = tmp2->next;
     }
 
     return 0;
@@ -277,25 +283,24 @@ solution_t *add_list(ulong val, solution_t *head) {
 
     while (current->next != NULL && current->next->station > val) {
         if (current->station == val) return head;
-        tmp = current;
         current = current->next;
     }
+
     if (current->station == val) return head;
     tmp = (solution_t *) malloc(sizeof(solution_t));
+
     tmp->next = current->next;
     current->next = tmp;
+
     tmp->station = val;
+
     return head;
 }
 
 solution_t *remove_list(ulong val, solution_t *head) {
     solution_t *current = head, *tmp;
     if (head->station == val) {
-
         head = head->next;
-
-
-
         current->next = NULL;
         free(current);
         return head;
@@ -308,7 +313,6 @@ solution_t *remove_list(ulong val, solution_t *head) {
     }
 
     if (current->station == val) {
-
         tmp->next = current->next;
         current->next = NULL;
         free(current);

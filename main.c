@@ -37,6 +37,8 @@ solution_t *remove_list(ulong val, solution_t *head);
 
 solution_t *copy_list(solution_t *path);
 
+void print_reverse(solution_t *head);
+
 int main() {
     char *input;
     input = malloc(4096);
@@ -63,7 +65,7 @@ int main() {
         } else if (strcmp(token, "pianifica-percorso") == 0) {
             if (path_planner(token, stations_table) == 1) printf("nessun percorso\n");
         }
-        print_stations(stations_table);
+        //print_stations(stations_table);
     }
 }
 
@@ -86,6 +88,10 @@ int add_station(char *token, station_t **stations_table) {
     new_station->reachable = NULL;
     token = strtok(NULL, " ");
     n_auto = atoi(token);
+    if (n_auto == 0) {
+        stations_table[distance] = new_station;
+        return 0;
+    }
     token = strtok(NULL, " ");
     new_station->parked_cars[0] = strtol(token, NULL, 10);
     token = strtok(NULL, " ");
@@ -170,7 +176,7 @@ int add_car(char *token, station_t **stations_table) {
         return 0;
     }
     for (i = 0; tmp->parked_cars[i] != 0; i++) {
-        if (tmp->parked_cars[i] == new_car) return 1;
+        if (tmp->parked_cars[i] == new_car) return 0;
         if (tmp->parked_cars[i] > new_car) tmp_cars[i] = tmp->parked_cars[i];
         if (tmp->parked_cars[i] < new_car) {
             if (first == 1) {
@@ -264,6 +270,7 @@ int path_planner(char *token, station_t **stations_table) {
     current_path = NULL;
 
     current_path = add_list(start, current_path);
+
     current_solution = NULL;
     max_lenght = -1;
     current_lenght = 1;
@@ -275,15 +282,13 @@ int path_planner(char *token, station_t **stations_table) {
                 &current_lenght);
         current_path = remove_list(reachable->station, current_path);
         reachable = reachable->next;
-
+        current_lenght = 1;
     }
     if (current_solution == NULL) return 1;
-    printf("%lu", current_solution->station);
-    current_solution = current_solution->next;
-    while (current_solution->next != NULL) {
-        printf(" %lu", current_solution->station);
-        current_solution = current_solution->next;
-    }
+
+
+    print_reverse(current_solution);
+
     printf("\n");
     return 0;
 }
@@ -312,12 +317,15 @@ void explore(station_t **stations_table, station_t *node, solution_t **path, sol
             tmp_p = *path;
             tmp_s = *solution;
             while (tmp_s != NULL && tmp_p != NULL) {
-                if (stations_table[tmp_s->station]->distance < stations_table[tmp_p->station]->distance) return;
-                if (stations_table[tmp_s->station]->distance > stations_table[tmp_p->station]->distance) {
+                if(stations_table[tmp_s->station]->distance == stations_table[tmp_p->station]->distance){}
+                else if (stations_table[tmp_s->station]->distance < stations_table[tmp_p->station]->distance) return;
+                else{
                     free(*solution);
                     *solution = copy_list(*path);
                     return;
                 }
+                tmp_s = tmp_s->next;
+                tmp_p = tmp_p->next;
             }
 
         }
@@ -331,6 +339,8 @@ void explore(station_t **stations_table, station_t *node, solution_t **path, sol
         *path = add_list(reachable->station, *path);
         explore(stations_table, stations_table[reachable->station], path, solution, goal, max_length_ptr,
                 current_lenght_ptr);
+        *current_lenght_ptr = *current_lenght_ptr -1;
+
         *path = remove_list(reachable->station, *path);
         reachable = reachable->next;
     }
@@ -398,13 +408,18 @@ solution_t *remove_list(ulong val, solution_t *head) {
 solution_t *copy_list(solution_t *path) {
     solution_t *p, *head = (solution_t *) malloc(sizeof(solution_t));
     p = head;
+
     while (path != NULL) {
         p->station = path->station;
+        if(path->next == NULL){
+            p->next = NULL;
+            return head;
+        }
         p->next = (solution_t *) malloc(sizeof(solution_t));
         p = p->next;
         path = path->next;
-
     }
+
     return head;
 }
 
@@ -430,11 +445,11 @@ void print_stations(station_t **stations_table) {
     printf("\n");
 }
 
-/*
- * aggiungi-stazione 10 2 100 200
- * aggiungi-stazione 200 2 100 200
- * demolisci-stazione 10
- * aggiungi-auto 10 300
- * rottama-auto 10 200
- *
- * */
+void print_reverse(solution_t *head){
+    if (head == NULL)
+        return;
+    print_reverse(head->next);
+
+    if(head->next != NULL) printf(" ");
+    printf("%lu", head->station);
+}

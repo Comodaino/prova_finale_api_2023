@@ -12,7 +12,6 @@ typedef struct Solution {
 typedef struct Station {
     ulong distance;
     ulong parked_cars[512];
-    int visited;
     struct Solution *reachable;
 } station_t;
 
@@ -70,7 +69,7 @@ int main() {
             else printf("non rottamata\n");
 
         } else if (strcmp(token, "pianifica-percorso") == 0) {
-            //print_stations(stations_table);
+            print_stations(stations_table);
             result = path_planner(token, stations_table);
 
             if (result == 1) printf("nessun percorso\n");
@@ -98,42 +97,39 @@ int add_station(char *token, station_t **stations_table, int *mds) {
 
     new_station = (station_t *) malloc(sizeof(station_t));
     new_station->distance = distance;
-    new_station->visited = 0;
     new_station->reachable = NULL;
     token = strtok(NULL, " ");
     n_auto = atoi(token);
-    if (n_auto == 0) {
-        stations_table[distance] = new_station;
-        return 0;
-    }
-    token = strtok(NULL, " ");
-    new_station->parked_cars[0] = strtol(token, NULL, 10);
-    token = strtok(NULL, " ");
-    while (token != NULL) {
-        autonomy = strtol(token, NULL, 10);
-        first = 1;
-        for (i = 0; new_station->parked_cars[i] != 0 && i < n_auto; i++) {
-            if (new_station->parked_cars[i] == autonomy) {
-                first = -1;
-                break;
-            }
-            if (new_station->parked_cars[i] > autonomy) tmp_cars[i] = new_station->parked_cars[i];
-            if (new_station->parked_cars[i] < autonomy) {
-                if (first == 1) {
-                    first = 0;
-                    tmp_cars[i] = autonomy;
-                } else tmp_cars[i] = new_station->parked_cars[i - 1];
-            }
-        }
-        if (first == 1) tmp_cars[i] = autonomy;
-        else tmp_cars[i] = new_station->parked_cars[i - 1];
-        if (first != -1) {
-            for (j = 0; tmp_cars[j] != 0; j++) {
-                new_station->parked_cars[j] = tmp_cars[j];
-            }
-        }
+    if(n_auto > 0) {
         token = strtok(NULL, " ");
+        new_station->parked_cars[0] = strtol(token, NULL, 10);
+        token = strtok(NULL, " ");
+        while (token != NULL) {
+            autonomy = strtol(token, NULL, 10);
+            first = 1;
+            for (i = 0; new_station->parked_cars[i] != 0 && i < n_auto; i++) {
+                if (new_station->parked_cars[i] == autonomy) {
+                    first = -1;
+                    break;
+                }
+                if (new_station->parked_cars[i] > autonomy) tmp_cars[i] = new_station->parked_cars[i];
+                if (new_station->parked_cars[i] < autonomy) {
+                    if (first == 1) {
+                        first = 0;
+                        tmp_cars[i] = autonomy;
+                    } else tmp_cars[i] = new_station->parked_cars[i - 1];
+                }
+            }
+            if (first == 1) tmp_cars[i] = autonomy;
+            else tmp_cars[i] = new_station->parked_cars[i - 1];
+            if (first != -1) {
+                for (j = 0; tmp_cars[j] != 0; j++) {
+                    new_station->parked_cars[j] = tmp_cars[j];
+                }
+            }
+            token = strtok(NULL, " ");
 
+        }
     }
 
 
@@ -152,10 +148,17 @@ int add_station(char *token, station_t **stations_table, int *mds) {
     }
 
 
+    if (n_auto == 0) {
+        stations_table[distance] = new_station;
+        return 0;
+    }
+
+
     i = 0;
     if (distance - new_station->parked_cars[0] > 0) i = distance - new_station->parked_cars[0];
 
-    while (i < distance + new_station->parked_cars[0]) {
+    while (i <= distance + new_station->parked_cars[0]) {
+
         if (stations_table[i] != NULL && i != distance) {
             new_station->reachable = add_list(i, new_station->reachable);
         }

@@ -16,12 +16,11 @@ typedef struct Station {
     struct Solution *reachable;
 } station_t;
 
-
 //void print_stations(station_t **stations_table_ptr);
 
 int add_station(char *, station_t **, ulong *);
 
-int remove_station(char *, station_t **, ulong *);
+int remove_station(char *, station_t **, const ulong *);
 
 int add_car(char *, station_t **);
 
@@ -41,15 +40,14 @@ void print_reverse(solution_t *);
 
 void print_direct(solution_t *);
 
-void delete_list(solution_t *);
-
 int main() {
-    char *input = NULL, *token = NULL;
+    char input[1000] = {'\000'}, *token = NULL;
     int result = 1;
     ulong most_distant_station = 0;
-    input = malloc(10000);
-    station_t *stations_table[SIZE] = {NULL};
-    while (fgets(input, 10000, stdin)) {
+    station_t *stations_table[SIZE];
+    for(result = 0; result < SIZE; result++) stations_table[result]= NULL;
+    result = 1;
+    while (fgets(input, sizeof(input), stdin)) {
         token = strtok(input, " ");
         if (strcmp(token, "aggiungi-stazione") == 0) {
             result = add_station(token, stations_table, &most_distant_station);
@@ -80,12 +78,13 @@ int main() {
         }
 
     }
+    return 1;
 }
 
 
 int add_station(char *token, station_t **stations_table, ulong *mds) {
     ulong distance = 0, autonomy = 0, i=0;
-    int n_auto = 0;
+    ulong n_auto = 0;
     int j = 0, first = 0;
     ulong tmp_cars[512] = {0};
     station_t *tmp = NULL;
@@ -104,7 +103,7 @@ int add_station(char *token, station_t **stations_table, ulong *mds) {
     for (i = 0; i < 512; i++) new_station->parked_cars[i] = 0;
 
     token = strtok(NULL, " ");
-    n_auto = atoi(token);
+    n_auto = strtol(token, NULL, 10);
     if (n_auto > 0) {
         token = strtok(NULL, " ");
         new_station->parked_cars[0] = strtol(token, NULL, 10);
@@ -174,7 +173,7 @@ int add_station(char *token, station_t **stations_table, ulong *mds) {
 }
 
 
-int remove_station(char *token, station_t **stations_table, ulong *mds) {
+int remove_station(char *token, station_t **stations_table, const ulong *mds) {
     ulong distance = 0;
     station_t *tmp = NULL;
     solution_t *x = NULL, *y = NULL;
@@ -525,7 +524,7 @@ solution_t *copy_list(solution_t *path) {
     return head;
 }
 
-
+/*
 void print_stations(station_t **stations_table) {
     printf("Stations:\n");
     int i = 0, j = 0;
@@ -546,7 +545,7 @@ void print_stations(station_t **stations_table) {
     }
     printf("\n");
 }
-
+*/
 void print_reverse(solution_t *head) {
     if (head == NULL)
         return;

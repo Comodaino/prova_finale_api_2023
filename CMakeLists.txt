@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.19)
 project(PFAPI C)
 set(CMAKE_C_STANDARD 11)
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DEVAL -Wall -Werror -std=gnu11 -O2 -pipe -static -s -o -lm")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DEVAL -Wall -Werror -std=gnu11 -static -pipe -g3 -DDEBUG -s -o -lm")
 add_executable(PFAPI main.c)

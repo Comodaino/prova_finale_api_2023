@@ -47,39 +47,32 @@ void print_direct(solution_t *);
 void resetter();
 
 int main() {
-    int result;
+    int i;
 
 
-    for (result = 0; result < SIZE; result++) stations_table[result] = NULL;
+    for (i = 0; i < SIZE; i++) stations_table[i] = NULL;
     while (fscanf(stdin, "%s", input) != EOF) {
 
         if (strcmp(input, "aggiungi-stazione") == 0) {
-            result = add_station();
-            if (result == 0) printf("aggiunta\n");
+            if (add_station() == 0) printf("aggiunta\n");
             else printf("non aggiunta\n");
 
         } else if (strcmp(input, "demolisci-stazione") == 0) {
-            result = remove_station();
-            if (result == 0) printf("demolita\n");
+            if (remove_station() == 0) printf("demolita\n");
             else printf("non demolita\n");
 
         } else if (strcmp(input, "aggiungi-auto") == 0) {
-            result = add_car();
-            if (result == 0) printf("aggiunta\n");
+            if (add_car() == 0) printf("aggiunta\n");
             else printf("non aggiunta\n");
 
         } else if (strcmp(input, "rottama-auto") == 0) {
-            result = remove_car();
-            if (result == 0) printf("rottamata\n");
+            if (remove_car() == 0) printf("rottamata\n");
             else printf("non rottamata\n");
 
         } else if (strcmp(input, "pianifica-percorso") == 0) {
-//            /print_stations(stations_table);
-
-            result = path_planner();
+            //print_stations(stations_table);
             resetter(most_distant_station);
-            if (result == 1) printf("nessun percorso\n");
-
+            if (path_planner() == 1) printf("nessun percorso\n");
         }
 
     }
@@ -94,10 +87,9 @@ int add_station() {
     long li = 0;
 
 
-
-    if(fscanf(stdin, "%s", input) == EOF) return 1;
+    if (fscanf(stdin, "%s", input) == EOF) return 1;
     distance = atol(input);
-    if(fscanf(stdin, "%s", input) == EOF) return 1;
+    if (fscanf(stdin, "%s", input) == EOF) return 1;
     n_auto = atol(input);
 
     if (stations_table[distance] != NULL) return 1;
@@ -126,13 +118,13 @@ int add_station() {
     if (n_auto == 0) return 0;
     for (i = 0; i < n_auto; i++) {
         flag = 0;
-        if(fscanf(stdin, "%s", input) == EOF) return 1;
+        if (fscanf(stdin, "%s", input) == EOF) return 1;
         autonomy = atol(input);
         for (j = 0; j < 512; j++) {
             if (new_station->parked_cars[j] == autonomy) flag = 1;
             if (new_station->parked_cars[j] < autonomy) break;
         }
-        if(flag == 0){
+        if (flag == 0) {
             pos = j;
             for (j = 511; j >= pos; j--) new_station->parked_cars[j + 1] = new_station->parked_cars[j];
             new_station->parked_cars[pos] = autonomy;
@@ -143,9 +135,9 @@ int add_station() {
     //check for itself
     li = 0;
     if (distance > new_station->parked_cars[0]) li = distance - new_station->parked_cars[0];
-    while (li <= distance + new_station->parked_cars[0]){
+    while (li <= distance + new_station->parked_cars[0]) {
 
-        if(stations_table[li] != NULL && li != distance) new_station->reachable = add_list(li, new_station->reachable);
+        if (stations_table[li] != NULL && li != distance) new_station->reachable = add_list(li, new_station->reachable);
         li++;
     }
     return 0;
@@ -197,7 +189,7 @@ int add_car() {
     distance = atol(input);
     if (fscanf(stdin, "%s", input) == EOF) return 1;
     autonomy = atol(input);
-    if  (autonomy == 0) return 0;
+    if (autonomy == 0) return 0;
     tmp = stations_table[distance];
     if (tmp == NULL) return 1;
     if (tmp->parked_cars[0] == 0) {
@@ -283,9 +275,9 @@ int path_planner() {
     station_t *current_node = NULL;
     solution_t *current_solution = NULL, *current_path = NULL, *reachable = NULL;
 
-    if(fscanf(stdin, "%s", input)==EOF) return 1;
+    if (fscanf(stdin, "%s", input) == EOF) return 1;
     start = atol(input);
-    if(fscanf(stdin, "%s", input)==EOF) return 1;
+    if (fscanf(stdin, "%s", input) == EOF) return 1;
     goal = atol(input);
 
     if (start == goal) {
@@ -303,6 +295,7 @@ int path_planner() {
     current_length = 1;
     reachable = current_node->reachable;
     if (reachable == NULL) return 1;
+
 
     while (reachable != NULL) {
         distance = reachable->station;

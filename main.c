@@ -28,25 +28,25 @@ void print_stations();
 int add_station();
 
 int main() {
-    char input[100] = {'\000'};
+    char input[100];
     int i = 0;
     for (i = 0; i < SIZE; i++) stations_table[i] = NULL;
-    while (fgets(input, sizeof(input), stdin)) {
-        token = strtok(input, " ");
+    while (fscanf(stdin, "%s", input)!=EOF) {
 
-        if (strcmp(token, "aggiungi-stazione") == 0) {
+
+        if (strcmp(input, "aggiungi-stazione") == 0) {
 
             if (add_station() == 1) printf("non ");
             printf("aggiunta\n");
 
             print_stations();
-        } else if (strcmp(token, "demolisci-stazione") == 0) {
+        } else if (strcmp(input, "demolisci-stazione") == 0) {
 
-        } else if (strcmp(token, "aggiungi-auto") == 0) {
+        } else if (strcmp(input, "aggiungi-auto") == 0) {
 
-        } else if (strcmp(token, "rottama-auto") == 0) {
+        } else if (strcmp(input, "rottama-auto") == 0) {
 
-        } else if (strcmp(token, "pianifica-percorso") == 0) {
+        } else if (strcmp(input, "pianifica-percorso") == 0) {
             //print_stations(stations_table);
         }
 
@@ -57,15 +57,18 @@ int main() {
 int add_station() {
     long n_auto = 0, distance = 0, new_car = 0;
     station_t *new_station = NULL, *tmp = NULL;
-    int i = 0, j = 0, pos = 0, flag = 0;
+    int i = 0, j = 0, pos = 0, flag = 0, result;
     long li = 0;
+    char input[100];
 
 
-    token = strtok(NULL, " ");
-    distance = atol(token);
-    return 0;
-    token = strtok(NULL, " ");
-    n_auto = atol(token);
+    result  = fscanf(stdin, "%s", input);
+    if(result == 1) return 1;
+    distance = atol(input);
+    result  = fscanf(stdin, "%s", input);
+    if(result == 1) return 1;
+    n_auto = atol(input);
+
     if (stations_table[distance] != NULL) return 1;
 
     new_station = (station_t *) malloc(sizeof(station_t));
@@ -92,8 +95,9 @@ int add_station() {
     if (n_auto == 0) return 0;
     for (i = 0; i < n_auto; i++) {
         flag = 0;
-        token = strtok(NULL, " ");
-        new_car = strtol(token, NULL, 10);
+        result = fscanf(stdin, "%s", input);
+        if(result == 1) return 1;
+        new_car = atol(input);
         for (j = 0; j < 512; j++) {
             if (new_station->parked_cars[j] == new_car) flag = 1;
             if (new_station->parked_cars[j] < new_car) break;

@@ -19,7 +19,7 @@ typedef struct Station {
 
 long most_distant_station = -1;
 station_t *stations_table[SIZE];
-char *token = NULL;
+char *token = NULL, *trash = NULL;
 
 solution_t *add_list(long, solution_t *);
 
@@ -60,10 +60,12 @@ int add_station() {
     int i = 0, j = 0, pos = 0, flag = 0;
     long li = 0;
 
+
     token = strtok(NULL, " ");
-    distance = strtol(token, NULL, 10);
+    distance = atol(token);
+    return 0;
     token = strtok(NULL, " ");
-    n_auto = strtol(token, NULL, 10);
+    n_auto = atol(token);
     if (stations_table[distance] != NULL) return 1;
 
     new_station = (station_t *) malloc(sizeof(station_t));
@@ -85,7 +87,7 @@ int add_station() {
                 tmp->reachable = add_list(distance, tmp->reachable);
             }
         }
-    }g
+    }
 
     if (n_auto == 0) return 0;
     for (i = 0; i < n_auto; i++) {
@@ -114,6 +116,7 @@ int add_station() {
 }
 
 solution_t *add_list(long distance, solution_t *head) {
+
     solution_t *p = NULL, *tmp = NULL;
     if (head == NULL) {
         head = (solution_t *) malloc(sizeof(solution_t));

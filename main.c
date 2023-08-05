@@ -17,18 +17,20 @@ typedef struct Station {
 } station_t;
 
 station_t *stations_table[SIZE];
+char input[100];
+ulong most_distant_station = 0;
 
 void print_stations();
 
-int add_station(char *, ulong *);
+int add_station();
 
-int remove_station(char *, const ulong *);
+int remove_station();
 
-int add_car(char *);
+int add_car();
 
-int remove_car(char *);
+int remove_car();
 
-int path_planner(char *);
+int path_planner();
 
 void explore(station_t *, solution_t **, solution_t **, ulong, int *, int *, int);
 
@@ -42,41 +44,39 @@ void print_reverse(solution_t *);
 
 void print_direct(solution_t *);
 
-void resetter(ulong);
+void resetter();
 
 int main() {
-    char input[100] = {'\000'}, *token = NULL;
     int result;
-    ulong most_distant_station = 0;
+
 
     for (result = 0; result < SIZE; result++) stations_table[result] = NULL;
-    while (fgets(input, sizeof(input), stdin)) {
-        token = strtok(input, " ");
+    while (fscanf(stdin, "%s", input) != EOF) {
 
-        if (strcmp(token, "aggiungi-stazione") == 0) {
-            result = add_station(token, &most_distant_station);
+        if (strcmp(input, "aggiungi-stazione") == 0) {
+            result = add_station();
             if (result == 0) printf("aggiunta\n");
             else printf("non aggiunta\n");
 
-        } else if (strcmp(token, "demolisci-stazione") == 0) {
-            result = remove_station(token, &most_distant_station);
+        } else if (strcmp(input, "demolisci-stazione") == 0) {
+            result = remove_station();
             if (result == 0) printf("demolita\n");
             else printf("non demolita\n");
 
-        } else if (strcmp(token, "aggiungi-auto") == 0) {
-            result = add_car(token);
+        } else if (strcmp(input, "aggiungi-auto") == 0) {
+            result = add_car();
             if (result == 0) printf("aggiunta\n");
             else printf("non aggiunta\n");
 
-        } else if (strcmp(token, "rottama-auto") == 0) {
-            result = remove_car(token);
+        } else if (strcmp(input, "rottama-auto") == 0) {
+            result = remove_car();
             if (result == 0) printf("rottamata\n");
             else printf("non rottamata\n");
 
-        } else if (strcmp(token, "pianifica-percorso") == 0) {
-            //2print_stations(stations_table);
+        } else if (strcmp(input, "pianifica-percorso") == 0) {
+//            /print_stations(stations_table);
 
-            result = path_planner(token);
+            result = path_planner();
             resetter(most_distant_station);
             if (result == 1) printf("nessun percorso\n");
 
@@ -87,119 +87,81 @@ int main() {
 }
 
 
-int add_station(char *token, ulong *mds) {
-    ulong distance, autonomy, i;
-    ulong n_auto;
-    int j, first;
-    ulong tmp_cars[512] = {0};
-    station_t *tmp = NULL;
-    station_t *new_station = NULL;
-    token = strtok(NULL, " ");
-    distance = strtol(token, NULL, 10);
+int add_station() {
+    long n_auto = 0, distance = 0, autonomy = 0;
+    station_t *new_station = NULL, *tmp = NULL;
+    int i = 0, j = 0, pos = 0, flag = 0;
+    long li = 0;
+
+
+
+    if(fscanf(stdin, "%s", input) == EOF) return 1;
+    distance = atol(input);
+    if(fscanf(stdin, "%s", input) == EOF) return 1;
+    n_auto = atol(input);
 
     if (stations_table[distance] != NULL) return 1;
 
-    if (*mds < distance) *mds = distance;
-
     new_station = (station_t *) malloc(sizeof(station_t));
-
-    if (new_station == NULL) return 1;
-
-    new_station->distance = distance;
     new_station->reachable = NULL;
-    new_station->visited = 0;
-
+    new_station->distance = distance;
     for (i = 0; i < 512; i++) new_station->parked_cars[i] = 0;
-
-    token = strtok(NULL, " ");
-    n_auto = strtol(token, NULL, 10);
-    if (n_auto > 0) {
-        token = strtok(NULL, " ");
-        new_station->parked_cars[0] = strtol(token, NULL, 10);
-        token = strtok(NULL, " ");
-        while (token != NULL) {
-            autonomy = strtol(token, NULL, 10);
-            if (autonomy != 0) {
-                first = 1;
-                for (i = 0; new_station->parked_cars[i] != 0 && i < n_auto; i++) {
-                    if (new_station->parked_cars[i] == autonomy) {
-                        first = -1;
-                        break;
-                    }
-                    if (new_station->parked_cars[i] > autonomy) tmp_cars[i] = new_station->parked_cars[i];
-                    if (new_station->parked_cars[i] < autonomy) {
-                        if (first == 1) {
-                            first = 0;
-                            tmp_cars[i] = autonomy;
-                        } else tmp_cars[i] = new_station->parked_cars[i - 1];
-                    }
-                }
-                if (first == 1) tmp_cars[i] = autonomy;
-                else tmp_cars[i] = new_station->parked_cars[i - 1];
-                if (first != -1) {
-                    for (j = 0; tmp_cars[j] != 0; j++) {
-                        new_station->parked_cars[j] = tmp_cars[j];
-                    }
-                }
-            }
-            token = strtok(NULL, " ");
-
-        }
-    }
-
-
-    for (i = 0; i < *mds; i++) {
-        if (stations_table[i] != NULL) {
-            tmp = stations_table[i];
-
-            if (i > distance) {
-                if (tmp->parked_cars[0] > i || i - tmp->parked_cars[0] <= distance)
-                    tmp->reachable = add_list(distance, tmp->reachable);
-
-
-            } else if (i < distance) {
-                if (tmp->parked_cars[0] + i >= distance) tmp->reachable = add_list(distance, tmp->reachable);
-            }
-
-
-        }
-    }
-
-    if (n_auto == 0) {
-        stations_table[distance] = new_station;
-        return 0;
-    }
-
-    i = 0;
-
-    if (distance >= new_station->parked_cars[0]) i = distance - new_station->parked_cars[0];
-
-
-    while (i <= distance + new_station->parked_cars[0]) {
-
-        if (stations_table[i] != NULL && i != distance) {
-            new_station->reachable = add_list(i, new_station->reachable);
-
-        }
-        i++;
-    }
-
+    new_station->visited = 0;
     stations_table[distance] = new_station;
 
+    if (most_distant_station == -1 || most_distant_station < distance) most_distant_station = distance;
+
+    //check for other stations
+    for (i = 0; i <= most_distant_station; i++) {
+        if (stations_table[i] != NULL && i != distance) {
+            tmp = stations_table[i];
+            if (i < distance && tmp->parked_cars[0] + tmp->distance > distance) {
+                tmp->reachable = add_list(distance, tmp->reachable);
+            } else if (tmp->distance - tmp->parked_cars[0] < distance) {
+                tmp->reachable = add_list(distance, tmp->reachable);
+            }
+        }
+    }
+
+    if (n_auto == 0) return 0;
+    for (i = 0; i < n_auto; i++) {
+        flag = 0;
+        if(fscanf(stdin, "%s", input) == EOF) return 1;
+        autonomy = atol(input);
+        for (j = 0; j < 512; j++) {
+            if (new_station->parked_cars[j] == autonomy) flag = 1;
+            if (new_station->parked_cars[j] < autonomy) break;
+        }
+        if(flag == 0){
+            pos = j;
+            for (j = 511; j >= pos; j--) new_station->parked_cars[j + 1] = new_station->parked_cars[j];
+            new_station->parked_cars[pos] = autonomy;
+        }
+
+    }
+
+    //check for itself
+    li = 0;
+    if (distance > new_station->parked_cars[0]) li = distance - new_station->parked_cars[0];
+    while (li <= distance + new_station->parked_cars[0]){
+
+        if(stations_table[li] != NULL && li != distance) new_station->reachable = add_list(li, new_station->reachable);
+        li++;
+    }
     return 0;
 }
 
 
-int remove_station(char *token, const ulong *mds) {
+int remove_station() {
     ulong distance;
     station_t *tmp = NULL;
     solution_t *x = NULL, *y = NULL;
     int i;
-    token = strtok(NULL, " ");
-    distance = strtol(token, NULL, 10);
+    if (fscanf(stdin, "%s", input) == EOF) return 1;
+    distance = atol(input);
     if (stations_table[distance] == NULL) return 1;
 
-    for (i = 0; i < *mds; i++) {
+    for (i = 0; i < most_distant_station; i++) {
 
         if (stations_table[i] != NULL) {
             tmp = stations_table[i];
@@ -227,30 +189,30 @@ int remove_station(char *token, const ulong *mds) {
 }
 
 
-int add_car(char *token) {
+int add_car() {
     int pos = 0, j = 0;
-    ulong distance, new_car, i = 0;
+    ulong distance, autonomy, i = 0;
     station_t *tmp = NULL;
-    token = strtok(NULL, " ");
-    distance = strtol(token, NULL, 10);
-    token = strtok(NULL, " ");
-    new_car = strtol(token, NULL, 10);
-    if (new_car == 0) return 0;
+    if (fscanf(stdin, "%s", input) == EOF) return 1;
+    distance = atol(input);
+    if (fscanf(stdin, "%s", input) == EOF) return 1;
+    autonomy = atol(input);
+    if  (autonomy == 0) return 0;
     tmp = stations_table[distance];
     if (tmp == NULL) return 1;
     if (tmp->parked_cars[0] == 0) {
-        tmp->parked_cars[0] = new_car;
+        tmp->parked_cars[0] = autonomy;
         return 0;
     }
 
     for (j = 0; tmp->parked_cars[j] != 0; j++) {
-        if (tmp->parked_cars[j] < new_car) break;
+        if (tmp->parked_cars[j] < autonomy) break;
     }
     pos = j;
     for (j = 511; j >= pos; j--) {
         tmp->parked_cars[j + 1] = tmp->parked_cars[j];
     }
-    tmp->parked_cars[pos] = new_car;
+    tmp->parked_cars[pos] = autonomy;
 
     i = 0;
     if (distance > tmp->parked_cars[0]) i = distance - tmp->parked_cars[0];
@@ -266,26 +228,25 @@ int add_car(char *token) {
     return 0;
 }
 
-int remove_car(char *token) {
+int remove_car() {
     int i, first = 1;
-    ulong distance, new_car;
+    ulong distance, autonomy;
     ulong tmp_cars[512] = {0};
     station_t *tmp = NULL;
     solution_t *tmp2 = NULL;
 
 
-    token = strtok(NULL, " ");
-    distance = strtol(token, NULL, 10);
-    token = strtok(NULL, " ");
-    new_car = strtol(token, NULL, 10);
-
+    if (fscanf(stdin, "%s", input) == EOF) return 1;
+    distance = atol(input);
+    if (fscanf(stdin, "%s", input) == EOF) return 1;
+    autonomy = atol(input);
     tmp = stations_table[distance];
     if (tmp == NULL) return 1;
 
     for (i = 0; tmp->parked_cars[i] != 0; i++) {
-        if (tmp->parked_cars[i] > new_car) tmp_cars[i] = tmp->parked_cars[i];
-        if (tmp->parked_cars[i] == new_car) first = 0;
-        if (tmp->parked_cars[i] < new_car) {
+        if (tmp->parked_cars[i] > autonomy) tmp_cars[i] = tmp->parked_cars[i];
+        if (tmp->parked_cars[i] == autonomy) first = 0;
+        if (tmp->parked_cars[i] < autonomy) {
             if (first == 0) {
                 tmp_cars[i - 1] = tmp->parked_cars[i];
             } else return 1;
@@ -316,16 +277,16 @@ int remove_car(char *token) {
 }
 
 
-int path_planner(char *token) {
+int path_planner() {
     int max_length = -1, current_length = 0, direction = 1;
     ulong start, goal, distance;
     station_t *current_node = NULL;
     solution_t *current_solution = NULL, *current_path = NULL, *reachable = NULL;
 
-    token = strtok(NULL, " ");
-    start = strtol(token, NULL, 10);
-    token = strtok(NULL, " ");
-    goal = strtol(token, NULL, 10);
+    if(fscanf(stdin, "%s", input)==EOF) return 1;
+    start = atol(input);
+    if(fscanf(stdin, "%s", input)==EOF) return 1;
+    goal = atol(input);
 
     if (start == goal) {
         printf("%lu\n", start);
@@ -545,7 +506,7 @@ solution_t *remove_list(ulong val, solution_t *head) {
     if (head == NULL) return NULL;
     if (head->station == val) {
         prv = head->next;
-        free(head);
+        //free(head);
         head = NULL;
         return prv;
     }
@@ -594,7 +555,7 @@ solution_t *copy_list(solution_t *path) {
     return head;
 }
 
-void print_stations(station_t **stations_table) {
+void print_stations() {
     printf("Stations:\n");
     int i = 0, j = 0;
     solution_t *tmp = NULL;
@@ -620,9 +581,9 @@ void print_stations(station_t **stations_table) {
     printf("\n");
 }
 
-void resetter(ulong mds) {
+void resetter() {
     ulong i = 0;
-    for (i = 0; i <= mds; i++) {
+    for (i = 0; i <= most_distant_station; i++) {
         if (stations_table[i] != NULL) stations_table[i]->visited = 0;
     }
 

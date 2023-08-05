@@ -22,6 +22,7 @@ station_t *stations_table[SIZE];
 char *token = NULL, *trash = NULL;
 
 solution_t *add_list(long, solution_t *);
+solution_t *remove_list(long, solution_t *);
 
 void print_stations();
 
@@ -120,7 +121,6 @@ int add_station() {
 }
 
 solution_t *add_list(long distance, solution_t *head) {
-
     solution_t *p = NULL, *tmp = NULL;
     if (head == NULL) {
         head = (solution_t *) malloc(sizeof(solution_t));
@@ -142,6 +142,17 @@ solution_t *add_list(long distance, solution_t *head) {
     return head;
 }
 
+solution_t *remove_list(long distance, solution_t *head){
+    solution_t *p = NULL, *tmp = NULL;
+    if(head == NULL) return  NULL;
+    p = head;
+    while (p->next != NULL && p->station > distance) {
+        p = p->next;
+    }
+    if(p->station != distance) return head;
+    p->prev->next = p->next;
+    return head;
+}
 
 void print_stations() {
     printf("Stations:\n");

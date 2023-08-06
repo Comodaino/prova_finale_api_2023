@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define SIZE 32767
+#define SIZE 65536
 
 typedef struct Solution {
     long long station;
@@ -56,7 +56,7 @@ int remove_table(long long);
 station_t *get_table(long long);
 
 int main() {
-    long long i = 0;
+    //long long i = 0;
     //for (i = 0; i < SIZE; i++) stations_table[i] = NULL;
     while (get_input() == 0) {
 
@@ -77,7 +77,7 @@ int main() {
             else printf("non rottamata\n");
 
         } else if (strcmp(input, "pianifica-percorso") == 0) {
-            print_stations(stations_table);
+            //print_stations(stations_table);
             resetter(most_distant_station);
             if (path_planner() == 1) printf("nessun percorso\n");
         }

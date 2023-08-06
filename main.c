@@ -590,6 +590,7 @@ int get_input() {
     char tmp = '\0';
     for (i = 0; i < 20; i++) {
         tmp = getc_unlocked(stdin);
+        if(tmp == '\n') tmp = getc_unlocked(stdin);
         if(tmp == EOF) return 1;
         if (tmp == ' ') break;
         input[i] = tmp;

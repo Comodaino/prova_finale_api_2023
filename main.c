@@ -112,10 +112,10 @@ int add_station() {
     for (i = 0; i <= most_distant_station; i++) {
         tmp = get_table(i);
         if (tmp != NULL && i != distance) {
-
             if (i < distance && tmp->parked_cars[0] + tmp->distance > distance) {
                 tmp->reachable = add_list(distance, tmp->reachable);
-            } else if (tmp->distance - tmp->parked_cars[0] < distance) {
+            }
+            if (i > distance && tmp->distance - tmp->parked_cars[0] < distance) {
                 tmp->reachable = add_list(distance, tmp->reachable);
             }
         }
@@ -141,9 +141,10 @@ int add_station() {
     li = 0;
     if (distance > new_station->parked_cars[0]) li = distance - new_station->parked_cars[0];
     while (li <= distance + new_station->parked_cars[0]) {
-        if (get_table(li) == 0 && li != distance) new_station->reachable = add_list(li, new_station->reachable);
+        if (get_table(li) !=NULL && li != distance) new_station->reachable = add_list(li, new_station->reachable);
         li++;
     }
+
     return 0;
 }
 
@@ -200,12 +201,8 @@ int add_car() {
 
     i = 0;
     if (distance > tmp->parked_cars[0]) i = distance - tmp->parked_cars[0];
-
-
     while (i <= distance + tmp->parked_cars[0]) {
-        if (get_table(i) != NULL && i != distance) {
-            tmp->reachable = add_list(i, tmp->reachable);
-        }
+        if (get_table(i) !=NULL && i != distance) tmp->reachable = add_list(i, tmp->reachable);
         i++;
     }
 

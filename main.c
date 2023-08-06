@@ -2,23 +2,24 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define SIZE 50000
+#define SIZE 32767
 
 typedef struct Solution {
-    long station;
+    long long station;
     struct Solution *next;
 } solution_t;
 
 typedef struct Station {
-    long distance;
-    long parked_cars[512];
+    long long distance;
+    long long parked_cars[512];
     int visited;
+    struct Station *next;
     struct Solution *reachable;
 } station_t;
 
 station_t *stations_table[SIZE];
-char input[100];
-long most_distant_station = 0;
+char input[20];
+long long most_distant_station = 0;
 
 void print_stations();
 
@@ -32,11 +33,11 @@ int remove_car();
 
 int path_planner();
 
-void explore(station_t *, solution_t **, solution_t **, long, int *, int *, int);
+void explore(station_t *, solution_t **, solution_t **, long long, int *, int *, int);
 
-solution_t *add_list(long, solution_t *);
+solution_t *add_list(long long, solution_t *);
 
-solution_t *remove_list(long, solution_t *);
+solution_t *remove_list(long long, solution_t *);
 
 solution_t *copy_list(solution_t *);
 
@@ -46,10 +47,14 @@ void print_direct(solution_t *);
 
 void resetter();
 
+int get_input();
+
+int add_to_table(station_t *);
+
 int main() {
-    int i;
+    long long i = 0;
     for (i = 0; i < SIZE; i++) stations_table[i] = NULL;
-    while (fscanf(stdin, "%s", input) != EOF) {
+    while (get_input() == 0) {
 
         if (strcmp(input, "aggiungi-stazione") == 0) {
             if (add_station() == 0) printf("aggiunta\n");
@@ -79,25 +84,24 @@ int main() {
 
 
 int add_station() {
-    long n_auto = 0, distance = 0, autonomy = 0;
+    long long n_auto = 0, distance = 0, autonomy = 0;
     station_t *new_station = NULL, *tmp = NULL;
     int i = 0, j = 0, pos = 0, flag = 0;
-    long li = 0;
+    long long li = 0;
 
 
-    if (fscanf(stdin, "%s", input) == EOF) return 1;
-    distance = strtol(input, NULL, 10);
-    if (fscanf(stdin, "%s", input) == EOF) return 1;
-    n_auto = strtol(input, NULL, 10);;
+    if (fscanf(stdin, "%lli", &distance) == EOF) return 1;
+    if (fscanf(stdin, "%lli", &n_auto) == EOF) return 1;
 
     if (stations_table[distance] != NULL) return 1;
 
     new_station = (station_t *) malloc(sizeof(station_t));
     new_station->reachable = NULL;
+    new_station->next = NULL;
     new_station->distance = distance;
     for (i = 0; i < 512; i++) new_station->parked_cars[i] = 0;
     new_station->visited = 0;
-    stations_table[distance] = new_station;
+    if(add_to_table(new_station) == 1) return 1;
 
     if (most_distant_station == -1 || most_distant_station < distance) most_distant_station = distance;
 
@@ -116,8 +120,7 @@ int add_station() {
     if (n_auto == 0) return 0;
     for (i = 0; i < n_auto; i++) {
         flag = 0;
-        if (fscanf(stdin, "%s", input) == EOF) return 1;
-        autonomy = strtol(input, NULL, 10);;
+        if (fscanf(stdin, "%lli", &autonomy) == EOF) return 1;
         for (j = 0; j < 512; j++) {
             if (new_station->parked_cars[j] == autonomy) flag = 1;
             if (new_station->parked_cars[j] < autonomy) break;
@@ -143,12 +146,11 @@ int add_station() {
 
 
 int remove_station() {
-    long distance;
+    long long distance;
     station_t *tmp = NULL;
     solution_t *x = NULL, *y = NULL;
     int i;
-    if (fscanf(stdin, "%s", input) == EOF) return 1;
-    distance = strtol(input, NULL, 10);;
+    if (fscanf(stdin, "%lli", &distance) == EOF) return 1;
     if (stations_table[distance] == NULL) return 1;
 
     for (i = 0; i < most_distant_station; i++) {
@@ -181,12 +183,10 @@ int remove_station() {
 
 int add_car() {
     int pos = 0, j = 0;
-    long distance, autonomy, i = 0;
+    long long distance, autonomy, i = 0;
     station_t *tmp = NULL;
-    if (fscanf(stdin, "%s", input) == EOF) return 1;
-    distance = strtol(input, NULL, 10);;
-    if (fscanf(stdin, "%s", input) == EOF) return 1;
-    autonomy = strtol(input, NULL, 10);;
+    if (fscanf(stdin, "%lli", &distance) == EOF) return 1;
+    if (fscanf(stdin, "%lli", &autonomy) == EOF) return 1;
     if (autonomy == 0) return 0;
     tmp = stations_table[distance];
     if (tmp == NULL) return 1;
@@ -220,16 +220,14 @@ int add_car() {
 
 int remove_car() {
     int i, first = 1;
-    long distance, autonomy;
-    long tmp_cars[512] = {0};
+    long long distance, autonomy;
+    long long tmp_cars[512] = {0};
     station_t *tmp = NULL;
     solution_t *tmp2 = NULL;
 
 
-    if (fscanf(stdin, "%s", input) == EOF) return 1;
-    distance = strtol(input, NULL, 10);;
-    if (fscanf(stdin, "%s", input) == EOF) return 1;
-    autonomy = strtol(input, NULL, 10);;
+    if (fscanf(stdin, "%lli", &distance) == EOF) return 1;
+    if (fscanf(stdin, "%lli", &autonomy) == EOF) return 1;
     tmp = stations_table[distance];
     if (tmp == NULL) return 1;
 
@@ -269,17 +267,15 @@ int remove_car() {
 
 int path_planner() {
     int max_length = -1, current_length = 0, direction = 1;
-    long start, goal, distance;
+    long long start, goal, distance;
     station_t *current_node = NULL;
     solution_t *current_solution = NULL, *current_path = NULL, *reachable = NULL;
 
-    if (fscanf(stdin, "%s", input) == EOF) return 1;
-    start = strtol(input, NULL, 10);;
-    if (fscanf(stdin, "%s", input) == EOF) return 1;
-    goal = strtol(input, NULL, 10);;
+    if (fscanf(stdin, "%lli", &start) == EOF) return 1;
+    if (fscanf(stdin, "%lli", &goal) == EOF) return 1;
 
     if (start == goal) {
-        printf("%lu\n", start);
+        printf("%lli\n", start);
         return 0;
     }
 
@@ -323,13 +319,13 @@ int path_planner() {
     return 0;
 }
 
-void explore(station_t *node, solution_t **path, solution_t **solution, long goal,
+void explore(station_t *node, solution_t **path, solution_t **solution, long long goal,
              int *max_length_ptr, int *current_length_ptr, int direction) {
 
     solution_t *tmp_s = NULL, *tmp_p = NULL, *reachable = NULL;
     solution_t *x = NULL, *y = NULL;
     station_t *tmp = NULL;
-    long distance;
+    long long distance;
     int choice = 0; // 1 = solution, -1 = path
     if (*max_length_ptr != -1 && *current_length_ptr == *max_length_ptr && node->distance != goal) return;
     if (node == NULL) return;
@@ -437,7 +433,7 @@ void explore(station_t *node, solution_t **path, solution_t **solution, long goa
 }
 
 
-solution_t *add_list(long val, solution_t *head) {
+solution_t *add_list(long long val, solution_t *head) {
     solution_t *current = NULL, *tmp = NULL;
 
     if (head == NULL) {
@@ -482,7 +478,7 @@ solution_t *add_list(long val, solution_t *head) {
     return head;
 }
 
-solution_t *remove_list(long val, solution_t *head) {
+solution_t *remove_list(long long val, solution_t *head) {
     solution_t *current = head, *prv = NULL;
     if (head == NULL) return NULL;
     if (head->station == val) {
@@ -543,7 +539,8 @@ void print_stations() {
     for (i = 0; i < 4096; i++) {
         if (stations_table[i] != NULL) {
             printf("[%d]: (", i);
-            for (j = 0; stations_table[i]->parked_cars[j] != 0; j++) printf(" %lu ", stations_table[i]->parked_cars[j]);
+            for (j = 0; stations_table[i]->parked_cars[j] != 0; j++)
+                printf(" %lli ", stations_table[i]->parked_cars[j]);
             printf(") reachable:");
 
             tmp = stations_table[i]->reachable;
@@ -553,7 +550,7 @@ void print_stations() {
                     printf("ERROR");
                     return;
                 }
-                printf(" %lu", tmp->station);
+                printf(" %lli", tmp->station);
                 tmp = tmp->next;
             }
             printf("\n");
@@ -563,7 +560,7 @@ void print_stations() {
 }
 
 void resetter() {
-    long i = 0;
+    long long i = 0;
     for (i = 0; i <= most_distant_station; i++) {
         if (stations_table[i] != NULL) stations_table[i]->visited = 0;
     }
@@ -575,15 +572,45 @@ void print_reverse(solution_t *head) {
     print_reverse(head->next);
 
     if (head->next != NULL) printf(" ");
-    printf("%lu", head->station);
+    printf("%lli", head->station);
 }
 
 void print_direct(solution_t *head) {
 
-    printf("%lu", head->station);
+    printf("%lli", head->station);
     head = head->next;
     while (head != NULL) {
-        printf(" %lu", head->station);
+        printf(" %lli", head->station);
         head = head->next;
     }
+}
+
+int get_input() {
+    int i = 0;
+    char tmp = '\0';
+    for (i = 0; i < 20; i++) {
+        tmp = getc_unlocked(stdin);
+        if (tmp == ' ') return 0;
+        input[i] = tmp;
+    }
+    return 1;
+}
+
+int add_to_table(station_t *new_station) {
+    long index;
+    station_t *p = NULL;
+    index = new_station->distance % SIZE;
+    if (stations_table[index] == NULL || stations_table[index]->distance <= new_station->distance) {
+        new_station->next = stations_table[index];
+        stations_table[index] = new_station;
+        return 0;
+    }
+    p = stations_table[index];
+    while (p->next != NULL && p->next->distance > new_station->distance) {
+        p = p->next;
+    }
+    if(p->next->distance == new_station->distance) return 1;
+    new_station->next = p->next;
+    p->next = new_station;
+    return 0;
 }

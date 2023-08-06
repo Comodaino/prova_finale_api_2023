@@ -51,9 +51,13 @@ int get_input();
 
 int add_to_table(station_t *);
 
+int remove_table(long long);
+
+station_t *get_table(long long);
+
 int main() {
     long long i = 0;
-    for (i = 0; i < SIZE; i++) stations_table[i] = NULL;
+    //for (i = 0; i < SIZE; i++) stations_table[i] = NULL;
     while (get_input() == 0) {
 
         if (strcmp(input, "aggiungi-stazione") == 0) {
@@ -77,23 +81,22 @@ int main() {
             resetter(most_distant_station);
             if (path_planner() == 1) printf("nessun percorso\n");
         }
-
     }
     return 0;
 }
 
 
 int add_station() {
-    long long n_auto = 0, distance = 0, autonomy = 0;
+    long long n_auto = 0, distance = 0, autonomy = 0, i = 0;
     station_t *new_station = NULL, *tmp = NULL;
-    int i = 0, j = 0, pos = 0, flag = 0;
+    int j = 0, pos = 0, flag = 0;
     long long li = 0;
 
 
     if (fscanf(stdin, "%lli", &distance) == EOF) return 1;
     if (fscanf(stdin, "%lli", &n_auto) == EOF) return 1;
 
-    if (stations_table[distance] != NULL) return 1;
+    if (get_table(distance) != NULL) return 1;
 
     new_station = (station_t *) malloc(sizeof(station_t));
     new_station->reachable = NULL;
@@ -101,14 +104,15 @@ int add_station() {
     new_station->distance = distance;
     for (i = 0; i < 512; i++) new_station->parked_cars[i] = 0;
     new_station->visited = 0;
-    if(add_to_table(new_station) == 1) return 1;
+    if (add_to_table(new_station) == 1) return 1;
 
     if (most_distant_station == -1 || most_distant_station < distance) most_distant_station = distance;
 
     //check for other stations
     for (i = 0; i <= most_distant_station; i++) {
-        if (stations_table[i] != NULL && i != distance) {
-            tmp = stations_table[i];
+        tmp = get_table(i);
+        if (tmp != NULL && i != distance) {
+
             if (i < distance && tmp->parked_cars[0] + tmp->distance > distance) {
                 tmp->reachable = add_list(distance, tmp->reachable);
             } else if (tmp->distance - tmp->parked_cars[0] < distance) {
@@ -137,8 +141,7 @@ int add_station() {
     li = 0;
     if (distance > new_station->parked_cars[0]) li = distance - new_station->parked_cars[0];
     while (li <= distance + new_station->parked_cars[0]) {
-
-        if (stations_table[li] != NULL && li != distance) new_station->reachable = add_list(li, new_station->reachable);
+        if (get_table(li) == 0 && li != distance) new_station->reachable = add_list(li, new_station->reachable);
         li++;
     }
     return 0;
@@ -149,20 +152,18 @@ int remove_station() {
     long long distance;
     station_t *tmp = NULL;
     solution_t *x = NULL, *y = NULL;
-    int i;
+    long long i;
     if (fscanf(stdin, "%lli", &distance) == EOF) return 1;
-    if (stations_table[distance] == NULL) return 1;
+    if (remove_table(distance) == 1) return 1;
 
     for (i = 0; i < most_distant_station; i++) {
-
-        if (stations_table[i] != NULL) {
-            tmp = stations_table[i];
-
-            stations_table[i]->reachable = remove_list(distance, stations_table[i]->reachable);
+        tmp = get_table(i);
+        if (tmp != NULL) {
+            tmp->reachable = remove_list(distance, tmp->reachable);
 
         }
     }
-    x = stations_table[distance]->reachable;
+    x = get_table(i)->reachable;
     while (x != NULL) {
         y = x;
         x = x->next;
@@ -170,13 +171,6 @@ int remove_station() {
         y = NULL;
     }
 
-    tmp = stations_table[distance];
-
-    free(tmp);
-    tmp = NULL;
-
-    //free(stations_table[distance]);
-    stations_table[distance] = NULL;
     return 0;
 }
 
@@ -188,7 +182,7 @@ int add_car() {
     if (fscanf(stdin, "%lli", &distance) == EOF) return 1;
     if (fscanf(stdin, "%lli", &autonomy) == EOF) return 1;
     if (autonomy == 0) return 0;
-    tmp = stations_table[distance];
+    tmp = get_table(distance);
     if (tmp == NULL) return 1;
     if (tmp->parked_cars[0] == 0) {
         tmp->parked_cars[0] = autonomy;
@@ -209,7 +203,7 @@ int add_car() {
 
 
     while (i <= distance + tmp->parked_cars[0]) {
-        if (stations_table[i] != NULL && i != distance) {
+        if (get_table(i) != NULL && i != distance) {
             tmp->reachable = add_list(i, tmp->reachable);
         }
         i++;
@@ -228,7 +222,7 @@ int remove_car() {
 
     if (fscanf(stdin, "%lli", &distance) == EOF) return 1;
     if (fscanf(stdin, "%lli", &autonomy) == EOF) return 1;
-    tmp = stations_table[distance];
+    tmp = get_table(distance);
     if (tmp == NULL) return 1;
 
     for (i = 0; tmp->parked_cars[i] != 0; i++) {
@@ -244,7 +238,7 @@ int remove_car() {
     for (i = 0; tmp->parked_cars[i] != 0; i++) {
         tmp->parked_cars[i] = tmp_cars[i];
     }
-    tmp = stations_table[distance];
+    tmp = get_table(distance);
     //TODO MIGLIORABILE
     first = 1;
     while (first != 0) {
@@ -268,7 +262,7 @@ int remove_car() {
 int path_planner() {
     int max_length = -1, current_length = 0, direction = 1;
     long long start, goal, distance;
-    station_t *current_node = NULL;
+    station_t *current_node = NULL, *tmp = NULL;
     solution_t *current_solution = NULL, *current_path = NULL, *reachable = NULL;
 
     if (fscanf(stdin, "%lli", &start) == EOF) return 1;
@@ -279,7 +273,7 @@ int path_planner() {
         return 0;
     }
 
-    current_node = stations_table[start];
+    current_node = get_table(start);
 
     current_path = add_list(start, current_path);
 
@@ -293,12 +287,13 @@ int path_planner() {
 
     while (reachable != NULL) {
         distance = reachable->station;
-        if (stations_table[distance] != NULL) {
-            stations_table[distance]->visited = 1;
+        tmp = get_table(distance);
+        if (tmp != NULL) {
+            tmp->visited = 1;
             if ((reachable->station > start && direction == 1) || (reachable->station < start && direction == -1)) {
 
                 current_path = add_list(distance, current_path);
-                explore(stations_table[reachable->station], &current_path, &current_solution, goal,
+                explore(get_table(reachable->station), &current_path, &current_solution, goal,
                         &max_length,
                         &current_length, direction);
                 current_path = remove_list(distance, current_path);
@@ -324,7 +319,7 @@ void explore(station_t *node, solution_t **path, solution_t **solution, long lon
 
     solution_t *tmp_s = NULL, *tmp_p = NULL, *reachable = NULL;
     solution_t *x = NULL, *y = NULL;
-    station_t *tmp = NULL;
+    station_t *tmp = NULL, *tmp_s_s = NULL, *tmp_p_s = NULL;
     long long distance;
     int choice = 0; // 1 = solution, -1 = path
     if (*max_length_ptr != -1 && *current_length_ptr == *max_length_ptr && node->distance != goal) return;
@@ -350,9 +345,10 @@ void explore(station_t *node, solution_t **path, solution_t **solution, long lon
             if (direction == -1) {
 
                 while (tmp_s != NULL && tmp_p != NULL) {
-
-                    if (stations_table[tmp_s->station]->distance == stations_table[tmp_p->station]->distance) {}
-                    else if (stations_table[tmp_s->station]->distance < stations_table[tmp_p->station]->distance)
+                    tmp_s_s = get_table(tmp_s->station);
+                    tmp_p_s = get_table(tmp_p->station);
+                    if (tmp_s_s->distance == tmp_p_s->distance) {}
+                    else if (tmp_s_s->distance < tmp_p_s->distance)
                         choice = 1;
                     else {
                         choice = -1;
@@ -375,9 +371,10 @@ void explore(station_t *node, solution_t **path, solution_t **solution, long lon
             }
 
             while (tmp_s != NULL && tmp_p != NULL) {
-
-                if (stations_table[tmp_s->station]->distance == stations_table[tmp_p->station]->distance) {}
-                else if (stations_table[tmp_s->station]->distance < stations_table[tmp_p->station]->distance) return;
+                tmp_s_s = get_table(tmp_s->station);
+                tmp_p_s = get_table(tmp_p->station);
+                if (tmp_s_s->distance == tmp_p_s->distance) {}
+                else if (tmp_s_s->distance < tmp_p_s->distance) return;
                 else {
                     //free(*solution);
 
@@ -406,19 +403,18 @@ void explore(station_t *node, solution_t **path, solution_t **solution, long lon
     reachable = node->reachable;
     while (reachable != NULL) {
         distance = reachable->station;
-        if (stations_table[distance] != NULL) {
-            tmp = stations_table[distance];
-
+        tmp = get_table(distance);
+        if (tmp != NULL) {
             if (distance != node->distance && (tmp->visited == 0 || *current_length_ptr <= tmp->visited)) {
 
-                stations_table[distance]->visited = *current_length_ptr;
+                tmp->visited = *current_length_ptr;
                 if ((distance > node->distance && direction == 1) ||
                     (distance < node->distance && direction == -1)) {
 
                     distance = reachable->station;
                     *current_length_ptr = *current_length_ptr + 1;
                     *path = add_list(distance, *path);
-                    explore(stations_table[reachable->station], path, solution, goal, max_length_ptr,
+                    explore(get_table(reachable->station), path, solution, goal, max_length_ptr,
                             current_length_ptr, direction);
 
                     *current_length_ptr = *current_length_ptr - 1;
@@ -536,14 +532,16 @@ void print_stations() {
     printf("Stations:\n");
     int i = 0, j = 0;
     solution_t *tmp = NULL;
+    station_t *tmp_s = NULL;
     for (i = 0; i < 4096; i++) {
-        if (stations_table[i] != NULL) {
+        tmp_s = get_table(i);
+        if (tmp_s != NULL) {
             printf("[%d]: (", i);
-            for (j = 0; stations_table[i]->parked_cars[j] != 0; j++)
-                printf(" %lli ", stations_table[i]->parked_cars[j]);
+            for (j = 0; tmp_s->parked_cars[j] != 0; j++)
+                printf(" %lli ", tmp_s->parked_cars[j]);
             printf(") reachable:");
 
-            tmp = stations_table[i]->reachable;
+            tmp = tmp_s->reachable;
 
             while (tmp != NULL) {
                 if (tmp->next != NULL && tmp->station == tmp->next->station) {
@@ -561,8 +559,10 @@ void print_stations() {
 
 void resetter() {
     long long i = 0;
+    station_t *tmp=NULL;
     for (i = 0; i <= most_distant_station; i++) {
-        if (stations_table[i] != NULL) stations_table[i]->visited = 0;
+        tmp = get_table(i);
+        if (tmp != NULL) tmp->visited = 0;
     }
 
 }
@@ -590,10 +590,14 @@ int get_input() {
     char tmp = '\0';
     for (i = 0; i < 20; i++) {
         tmp = getc_unlocked(stdin);
-        if (tmp == ' ') return 0;
+        if(tmp == EOF) return 1;
+        if (tmp == ' ') break;
         input[i] = tmp;
     }
-    return 1;
+    for(i = i; i<20; i++){
+        input[i] = '\0';
+    }
+    return 0;
 }
 
 int add_to_table(station_t *new_station) {
@@ -609,8 +613,40 @@ int add_to_table(station_t *new_station) {
     while (p->next != NULL && p->next->distance > new_station->distance) {
         p = p->next;
     }
-    if(p->next->distance == new_station->distance) return 1;
+    if (p->next->distance == new_station->distance) return 1;
     new_station->next = p->next;
     p->next = new_station;
     return 0;
+}
+
+int remove_table(long long distance) {
+    long index = distance % SIZE;
+    station_t *p = NULL, *prv = NULL;
+    if (stations_table[index] == NULL) return 1;
+    prv = stations_table[index];
+    p = prv->next;
+    while (p != NULL && p->distance >= distance) {
+        if (p->distance == distance) {
+            prv->next = p->next;
+            p->next = NULL;
+            free(p);
+            return 0;
+        }
+        prv = p;
+        p = p->next;
+    }
+    return 1;
+
+}
+
+station_t *get_table(long long distance) {
+    long index = distance % SIZE;
+    station_t *p = NULL;
+    if (stations_table[index] == NULL) return NULL;
+    p = stations_table[index];
+    while (p != NULL && p->distance >= distance) {
+        if (p->distance == distance) return p;
+        p = p->next;
+    }
+    return NULL;
 }

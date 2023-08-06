@@ -56,7 +56,7 @@ int remove_table(long long);
 station_t *get_table(long long);
 
 int main() {
-    //long long i = 0;
+    long long i = 0;
     //for (i = 0; i < SIZE; i++) stations_table[i] = NULL;
     while (get_input() == 0) {
 

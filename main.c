@@ -84,6 +84,9 @@ int main() {
             //print_stations(stations_table);
             resetter(most_distant_station);
             if (path_planner() == 1) printf("nessun percorso\n");
+        }else {
+            printf("problem");
+
         }
     }
 
@@ -338,7 +341,6 @@ void explore_direct(station_t *node, solution_t **path, solution_t **solution, l
 
     solution_t *tmp_s = NULL, *tmp_p = NULL, *reachable = NULL;
     station_t *tmp = NULL;
-
     if (node->distance == goal) {
         if (*solution == NULL || *current_length_ptr < *max_length_ptr) {
             *solution = copy_list(*path);
@@ -360,6 +362,7 @@ void explore_direct(station_t *node, solution_t **path, solution_t **solution, l
             }
         }
     }
+    if(*max_length_ptr!=-1 && *current_length_ptr >= *max_length_ptr) return;
     reachable = node->reachable;
 /*
     *tmp_reach = NULL
@@ -419,6 +422,7 @@ void explore_inverse(station_t *node, solution_t **path, solution_t **solution, 
             }
         }
     }
+    if(*max_length_ptr!=-1 && *current_length_ptr >= *max_length_ptr) return;
     reachable = node->reachable;
     while (reachable != NULL) {
         if (reachable->station < node->distance && reachable->station >= goal) {

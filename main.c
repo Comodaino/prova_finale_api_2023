@@ -33,7 +33,9 @@ int remove_car();
 
 int path_planner();
 
-void explore(station_t *, solution_t **, solution_t **, long long, int *, int *, int);
+void explore_direct(station_t *, solution_t **, solution_t **, long long, int *, int *);
+
+void explore_inverse(station_t *, solution_t **, solution_t **, long long, int *, int *);
 
 solution_t *add_list(long long, solution_t *);
 
@@ -271,7 +273,7 @@ int remove_car() {
 
 int path_planner() {
     int max_length = -1, current_length = 0, direction = 1;
-    long long start, goal, distance;
+    long long start, goal;
     station_t *current_node = NULL, *tmp = NULL;
     solution_t *current_solution = NULL, *current_path = NULL, *reachable = NULL;
 
@@ -293,144 +295,147 @@ int path_planner() {
     current_length = 1;
     reachable = current_node->reachable;
     if (reachable == NULL) return 1;
-
-
-    while (reachable != NULL) {
-        distance = reachable->station;
-        tmp = get_table(distance);
-        if (tmp != NULL) {
-            tmp->visited = 1;
-            if ((reachable->station > start && direction == 1) || (reachable->station < start && direction == -1)) {
-
-                current_path = add_list(distance, current_path);
-                explore(get_table(reachable->station), &current_path, &current_solution, goal,
-                        &max_length,
-                        &current_length, direction);
-                current_path = remove_list(distance, current_path);
+    if(direction == 1){
+        while (reachable != NULL) {
+            if (reachable->station > current_node->distance && reachable->station <= goal) {
+                tmp = get_table(reachable->station);
+                if (tmp->visited == 0 || tmp->visited < current_length) {
+                    current_length = current_length + 1;
+                    current_path = add_list(tmp->distance, current_path);
+                    explore_direct(tmp, &current_path, &current_solution, goal, &max_length, &current_length);
+                    current_path = remove_list(tmp->distance, current_path);
+                    current_length = current_length - 1;
+                }
             }
+            reachable = reachable->next;
         }
-        reachable = reachable->next;
-        current_length = 1;
-
+    }else{
+        while (reachable != NULL) {
+            if (reachable->station < current_node->distance && reachable->station >= goal) {
+                tmp = get_table(reachable->station);
+                if (tmp->visited == 0 || tmp->visited < current_length) {
+                    current_length = current_length + 1;
+                    current_path = add_list(tmp->distance, current_path);
+                    explore_inverse(tmp, &current_path, &current_solution, goal, &max_length, &current_length);
+                    current_path = remove_list(tmp->distance, current_path);
+                    current_length = current_length - 1;
+                }
+            }
+            reachable = reachable->next;
+        }
     }
 
 
     if (current_solution == NULL) return 1;
-
-    if (direction == -1) print_direct(current_solution);
-    else print_reverse(current_solution);
+    print_direct(current_solution);
 
     printf("\n");
     return 0;
 }
 
-void explore(station_t *node, solution_t **path, solution_t **solution, long long goal,
-             int *max_length_ptr, int *current_length_ptr, int direction) {
+void explore_direct(station_t *node, solution_t **path, solution_t **solution, long long goal,
+             int *max_length_ptr, int *current_length_ptr) {
 
     solution_t *tmp_s = NULL, *tmp_p = NULL, *reachable = NULL;
-    solution_t *x = NULL, *y = NULL;
-    station_t *tmp = NULL, *tmp_s_s = NULL, *tmp_p_s = NULL;
-    long long distance;
-    int choice = 0; // 1 = solution, -1 = path
-    if (*max_length_ptr != -1 && *current_length_ptr == *max_length_ptr && node->distance != goal) return;
-    if (node == NULL) return;
-    if ((direction == 1 && node->distance > goal )||(direction == -11 && node->distance < goal )) return;
+    station_t *tmp = NULL;
+
     if (node->distance == goal) {
-        if (*max_length_ptr == -1 || *current_length_ptr < *max_length_ptr) {
-            x = *solution;
-            while (x != NULL) {
-                y = x;
-                x = x->next;
-                free(y);
-                y = NULL;
-            }
+        if (*solution == NULL || *current_length_ptr < *max_length_ptr) {
             *solution = copy_list(*path);
             *max_length_ptr = *current_length_ptr;
             return;
         }
-        if (*current_length_ptr == *max_length_ptr) {
-            tmp_p = *path;
+        if (*max_length_ptr == *current_length_ptr) {
             tmp_s = *solution;
-
-            if (direction == -1) {
-
-                while (tmp_s != NULL && tmp_p != NULL) {
-                    tmp_s_s = get_table(tmp_s->station);
-                    tmp_p_s = get_table(tmp_p->station);
-                    if (tmp_s_s->distance == tmp_p_s->distance) {}
-                    else if (tmp_s_s->distance < tmp_p_s->distance)
-                        choice = 1;
-                    else {
-                        choice = -1;
-                        //free(*solution);
-                    }
-                    tmp_s = tmp_s->next;
-                    tmp_p = tmp_p->next;
-                }
-                if (choice == -1) {
-                    x = *solution;
-                    while (x != NULL) {
-                        y = x;
-                        x = x->next;
-                        free(y);
-                        y = NULL;
-                    }
-                    *solution = copy_list(*path);
-                    return;
-                }
-            }
+            tmp_p = *path;
             while (tmp_s != NULL && tmp_p != NULL) {
-                tmp_s_s = get_table(tmp_s->station);
-                tmp_p_s = get_table(tmp_p->station);
-                if (tmp_s_s->distance == tmp_p_s->distance) {}
-                else if (tmp_s_s->distance < tmp_p_s->distance) return;
-                else {
-                    //free(*solution);
-                    x = *solution;
-                    while (x != NULL) {
-                        y = x;
-                        x = x->next;
-                        free(y);
-                        y = NULL;
-                    }
+                if (tmp_s->station < tmp_p->station) return;
+                if (tmp_s->station > tmp_p->station) {
                     *solution = copy_list(*path);
+                    *max_length_ptr = *current_length_ptr;
                     return;
                 }
                 tmp_s = tmp_s->next;
                 tmp_p = tmp_p->next;
             }
         }
-        return;
     }
-
-    if (node->reachable == NULL) return;
-
     reachable = node->reachable;
+/*
+    solution_t *tmp_reach = NULL
+    tmp_reach = reachable;
+    printf("EXPLORING %lli:", node->distance);
+    while(tmp_reach !=NULL){
+        if (tmp_reach->station > node->distance && tmp_reach->station <= goal){
+            tmp = get_table(reachable->station);
+            if (tmp->visited == 0 || tmp->visited < *current_length_ptr) {
+                printf(" %lli", tmp_reach->station);
+            }
+        }
+        tmp_reach = tmp_reach->next;
+    }
+    printf("\n\n");
+*/
     while (reachable != NULL) {
-        distance = reachable->station;
-        tmp = get_table(distance);
-        if (tmp != NULL && !(solution == NULL && tmp->visited > 0 )) {
-            if (distance != node->distance && (tmp->visited == 0 || *current_length_ptr <= tmp->visited)) {
-
+        if (reachable->station > node->distance && reachable->station <= goal) {
+            tmp = get_table(reachable->station);
+            if (tmp->visited == 0 || tmp->visited > *current_length_ptr) {
                 tmp->visited = *current_length_ptr;
-                if ((distance > node->distance && direction == 1) ||
-                    (distance < node->distance && direction == -1)) {
-
-                    distance = reachable->station;
-                    *current_length_ptr = *current_length_ptr + 1;
-                    *path = add_list_head(distance, *path);
-                    explore(get_table(reachable->station), path, solution, goal, max_length_ptr,
-                            current_length_ptr, direction);
-
-                    *current_length_ptr = *current_length_ptr - 1;
-                    *path = remove_list(distance, *path);
-                }
+                *current_length_ptr = *current_length_ptr + 1;
+                *path = add_list_head(tmp->distance, *path);
+                explore_direct(tmp, path, solution, goal, max_length_ptr, current_length_ptr);
+                *path = remove_list(tmp->distance, *path);
+                *current_length_ptr = *current_length_ptr - 1;
             }
         }
         reachable = reachable->next;
     }
-
 }
+
+void explore_inverse(station_t *node, solution_t **path, solution_t **solution, long long goal,
+                    int *max_length_ptr, int *current_length_ptr) {
+
+    solution_t *tmp_s = NULL, *tmp_p = NULL, *reachable = NULL;
+    station_t *tmp = NULL;
+
+    if (node->distance == goal) {
+        if (*solution == NULL || *current_length_ptr < *max_length_ptr) {
+            *solution = copy_list(*path);
+            *max_length_ptr = *current_length_ptr;
+            return;
+        }
+        if (*max_length_ptr == *current_length_ptr) {
+            tmp_s = *solution;
+            tmp_p = *path;
+            while (tmp_s != NULL && tmp_p != NULL) {
+                if (tmp_s->station < tmp_p->station) return;
+                if (tmp_s->station > tmp_p->station) {
+                    *solution = copy_list(*path);
+                    *max_length_ptr = *current_length_ptr;
+                    return;
+                }
+                tmp_s = tmp_s->next;
+                tmp_p = tmp_p->next;
+            }
+        }
+    }
+    reachable = node->reachable;
+    while (reachable != NULL) {
+        if (reachable->station < node->distance && reachable->station >= goal) {
+            tmp = get_table(reachable->station);
+            if (tmp->visited == 0 || tmp->visited > *current_length_ptr) {
+                tmp->visited = *current_length_ptr;
+                *current_length_ptr = *current_length_ptr + 1;
+                *path = add_list_head(tmp->distance, *path);
+                explore_inverse(tmp, path, solution, goal, max_length_ptr, current_length_ptr);
+                *path = remove_list(tmp->distance, *path);
+                *current_length_ptr = *current_length_ptr - 1;
+            }
+        }
+        reachable = reachable->next;
+    }
+}
+
 
 
 solution_t *add_list(long long val, solution_t *head) {
@@ -609,7 +614,7 @@ int get_input() {
         if (tmp == ' ') break;
         input[i] = tmp;
     }
-    for (i = i; i < 30; i++) {
+    for (; i < 30; i++) {
         input[i] = '\0';
     }
     return 0;

@@ -362,7 +362,7 @@ void explore_direct(station_t *node, solution_t **path, solution_t **solution, l
     }
     reachable = node->reachable;
 /*
-    solution_t *tmp_reach = NULL
+    *tmp_reach = NULL
     tmp_reach = reachable;
     printf("EXPLORING %lli:", node->distance);
     while(tmp_reach !=NULL){

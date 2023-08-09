@@ -1,27 +1,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
 #define SIZE 2097152
+enum Color {
+    RED, BLACK
+};
 
-typedef struct Solution {
-    long long station;
-    struct Solution *next;
-} solution_t;
 
-typedef struct Station {
-    long long distance;
-    long long parked_cars[512];
-    int visited;
-    struct Station *next;
-    struct Solution *reachable;
-} station_t;
+struct Station {
+    long long data, cars[512];
+    enum Color color;
+    struct Station *parent;
+    struct Station *left;
+    struct Station *right;
+};
 
-station_t *stations_table[SIZE];
+struct Station *root = NULL;
+long long most_distant_station = -1;
+struct Station **stations_table = NULL;
 char input[30];
-long long most_distant_station = 0;
 
-void print_stations();
 
 int add_station();
 
@@ -31,37 +29,30 @@ int add_car();
 
 int remove_car();
 
-int path_planner();
+struct Station *createStation(long long data);
 
-void explore_direct(station_t *, solution_t **, solution_t **, long long, int *, int *);
+void leftRotate(struct Station *x);
 
-void explore_inverse(station_t *, solution_t **, solution_t **, long long, int *, int *);
+void rightRotate(struct Station *y);
 
-solution_t *add_list(long long, solution_t *);
+void insertFixup(struct Station *z);
 
-solution_t *add_list_head(long long, solution_t *);
+void insert(int data);
 
-solution_t *remove_list(long long, solution_t *);
+void deleteFixup(struct Station *x);
 
-solution_t *copy_list(solution_t *);
+void deleteStation(struct Station *z);
 
-solution_t *copy_partly(solution_t *, solution_t **);
+struct Station *minimumStation(struct Station *station);
 
-void print_reverse(solution_t *);
-
-void print_direct(solution_t *);
-
-void resetter();
+void transplant(struct Station *u, struct Station *v);
 
 int get_input();
 
-int add_to_table(station_t *);
-
-int remove_table(long long);
-
-station_t *get_table(long long);
+void print_stations();
 
 int main() {
+    stations_table = (struct Station **) malloc(SIZE * sizeof(struct Station));
 
     while (get_input() == 0) {
 
@@ -82,9 +73,8 @@ int main() {
             else printf("non rottamata\n");
 
         } else if (strcmp(input, "pianifica-percorso") == 0) {
-            //print_stations(stations_table);
-            resetter(most_distant_station);
-            if (path_planner() == 1) printf("nessun percorso\n");
+            print_stations();
+            //if (path_planner() == 1) printf("nessun percorso\n");
 
         } else {
             printf("problem");
@@ -94,516 +84,101 @@ int main() {
     return 0;
 }
 
-
-int add_station() {
-    long long n_auto = 0, distance = 0, autonomy = 0, i = 0;
-    station_t *new_station = NULL, *tmp = NULL;
-    int j = 0, pos = 0, flag = 0;
-    long long li = 0;
-
+int add_station(){
+    long long i, j, distance, n_auto, autonomy, pos;
+    int flag;
+    struct Station *tmp, **tmp_table = NULL;
 
     if (fscanf(stdin, "%lli", &distance) == EOF) return 1;
     if (fscanf(stdin, "%lli", &n_auto) == EOF) return 1;
-
-    if (get_table(distance) != NULL) {
-
-        for (i = 0; i < n_auto; i++) {
-
-            if (fscanf(stdin, "%lli", &autonomy) == EOF) return 1;
-        }
-        return 1;
-    }
-
-    new_station = (station_t *) malloc(sizeof(station_t));
-    new_station->reachable = NULL;
-    new_station->next = NULL;
-    new_station->distance = distance;
-    for (i = 0; i < 512; i++) new_station->parked_cars[i] = 0;
-    new_station->visited = 0;
-    if (add_to_table(new_station) == 1) return 1;
-
-    if (most_distant_station == -1 || most_distant_station < distance) most_distant_station = distance;
-
-    //check for other stations
-    for (i = 0; i <= most_distant_station; i++) {
-        tmp = get_table(i);
-        if (tmp != NULL && i != distance) {
-            if (i < distance && tmp->parked_cars[0] + tmp->distance > distance) {
-                tmp->reachable = add_list(distance, tmp->reachable);
-            }
-            if (i > distance && tmp->distance - tmp->parked_cars[0] < distance) {
-                tmp->reachable = add_list(distance, tmp->reachable);
-            }
-        }
-    }
-
+    if(stations_table[distance] != NULL) return 1;
+    tmp = createStation(distance);
     if (n_auto == 0) return 0;
     for (i = 0; i < n_auto; i++) {
-
         flag = 0;
         if (fscanf(stdin, "%lli", &autonomy) == EOF) return 1;
         for (j = 0; j < 512; j++) {
-            if (new_station->parked_cars[j] == autonomy) flag = 1;
-            if (new_station->parked_cars[j] < autonomy) break;
+            if (tmp->cars[j] == autonomy) flag = 1;
+            if (tmp->cars[j] < autonomy) break;
         }
         if (flag == 0) {
             pos = j;
-            for (j = 511; j >= pos; j--) new_station->parked_cars[j + 1] = new_station->parked_cars[j];
-            new_station->parked_cars[pos] = autonomy;
+            for (j = 511; j >= pos; j--) tmp->cars[j + 1] = tmp->cars[j];
+            tmp->cars[pos] = autonomy;
         }
-
     }
 
-    //check for itself
-    li = 0;
-    if (distance > new_station->parked_cars[0]) li = distance - new_station->parked_cars[0];
-    while (li <= distance + new_station->parked_cars[0]) {
-        if (get_table(li) != NULL && li != distance) new_station->reachable = add_list(li, new_station->reachable);
-        li++;
+    if (most_distant_station == -1 || most_distant_station < distance) most_distant_station = distance;
+    if (distance > most_distant_station && distance > SIZE) {
+        tmp_table = (struct Station **) malloc(most_distant_station * sizeof(struct Station));
+        for (i = 0; i < most_distant_station; i++) {
+            tmp_table[i] = stations_table[i];//assigning elements of p to q
+        }
+        free(stations_table);//releasing the memory held by pointer p
+        stations_table = tmp_table; //assigning the address held by q to p for the array
+        tmp_table = NULL;
     }
-
+    stations_table[distance] = tmp;
     return 0;
 }
 
-
-int remove_station() {
+int remove_station(){
     long long distance;
-    station_t *tmp = NULL;
-    long long i;
+    struct Station *tmp;
     if (fscanf(stdin, "%lli", &distance) == EOF) return 1;
-    if (get_table(distance) == NULL) return 1;
-    if (remove_table(distance) == 1) return 1;
-
-    for (i = 0; i < most_distant_station; i++) {
-        tmp = get_table(i);
-        if (tmp != NULL) {
-            tmp->reachable = remove_list(distance, tmp->reachable);
-        }
-    }
+    tmp = stations_table[distance];
+    if(tmp == NULL) return 1;
+    deleteStation(tmp);
     return 0;
 }
 
-
-int add_car() {
-    int pos = 0, j = 0, flag = 0;
-    long long distance, autonomy, i = 0;
-    station_t *tmp = NULL;
+int add_car(){
+    int pos = 0, j = 0;
+    long long distance, autonomy;
+    struct Station *tmp = NULL;
     if (fscanf(stdin, "%lli", &distance) == EOF) return 1;
     if (fscanf(stdin, "%lli", &autonomy) == EOF) return 1;
     if (autonomy == 0) return 0;
-    tmp = get_table(distance);
+    tmp = stations_table[distance];
     if (tmp == NULL) return 1;
-    if (tmp->parked_cars[0] == 0) {
-        tmp->parked_cars[0] = autonomy;
+    if (tmp->cars[0] == 0) {
+        tmp->cars[0] = autonomy;
         return 0;
     }
-    flag = 0;
-    for (j = 0; tmp->parked_cars[j] != 0; j++) {
-        if (tmp->parked_cars[j] == autonomy) flag = 1;
-        if (tmp->parked_cars[j] < autonomy) break;
+    for (j = 0; tmp->cars[j] != 0; j++) {
+        if (tmp->cars[j] < autonomy) break;
     }
     pos = j;
     for (j = 511; j >= pos; j--) {
-        tmp->parked_cars[j + 1] = tmp->parked_cars[j];
+        tmp->cars[j + 1] = tmp->cars[j];
     }
-    tmp->parked_cars[pos] = autonomy;
-    if (flag == 0) {
-        i = 0;
-        if (distance > tmp->parked_cars[0]) i = distance - tmp->parked_cars[0];
-        while (i <= distance + tmp->parked_cars[0]) {
-            if (get_table(i) != NULL && i != distance) tmp->reachable = add_list(i, tmp->reachable);
-            i++;
-        }
-    }
-
+    tmp->cars[pos] = autonomy;
     return 0;
 }
 
-int remove_car() {
+int remove_car(){
     int i, first = 1;
     long long distance, autonomy;
     long long tmp_cars[512] = {0};
-    station_t *tmp = NULL;
-    solution_t *tmp2 = NULL;
-
+    struct Station *tmp = NULL;
 
     if (fscanf(stdin, "%lli", &distance) == EOF) return 1;
     if (fscanf(stdin, "%lli", &autonomy) == EOF) return 1;
-    tmp = get_table(distance);
+    tmp = stations_table[distance];
     if (tmp == NULL) return 1;
-
-    for (i = 0; tmp->parked_cars[i] != 0; i++) {
-        if (tmp->parked_cars[i] > autonomy) tmp_cars[i] = tmp->parked_cars[i];
-        if (tmp->parked_cars[i] == autonomy) first = 0;
-        if (tmp->parked_cars[i] < autonomy) {
+    for (i = 0; tmp->cars[i] != 0; i++) {
+        if (tmp->cars[i] > autonomy) tmp_cars[i] = tmp->cars[i];
+        if (tmp->cars[i] == autonomy) first = 0;
+        if (tmp->cars[i] < autonomy) {
             if (first == 0) {
-                tmp_cars[i - 1] = tmp->parked_cars[i];
+                tmp_cars[i - 1] = tmp->cars[i];
             } else return 1;
         }
     }
-
-    for (i = 0; tmp->parked_cars[i] != 0; i++) {
-        tmp->parked_cars[i] = tmp_cars[i];
+    for (i = 0; tmp->cars[i] != 0; i++) {
+        tmp->cars[i] = tmp_cars[i];
     }
-    tmp = get_table(distance);
-    //TODO MIGLIORABILE
-    first = 1;
-    while (first != 0) {
-        first = 0;
-        tmp2 = tmp->reachable;
-        if (tmp2 == NULL) return 0;
-        while (tmp2 != NULL && first == 0) {
-            if (tmp2->station > tmp->parked_cars[0] + distance) {
-                tmp->reachable = remove_list(tmp2->station, tmp->reachable);
-                first = 1;
-            }
-            tmp2 = tmp2->next;
-        }
-
-    }
-
     return 0;
-}
-
-
-int path_planner() {
-    int max_length = -1, current_length = 0, direction = 1;
-    long long start, goal;
-    station_t *current_node = NULL, *tmp = NULL;
-    solution_t *current_solution = NULL, *current_path = NULL, *reachable = NULL;
-
-    if (fscanf(stdin, "%lli", &start) == EOF) return 1;
-    if (fscanf(stdin, "%lli", &goal) == EOF) return 1;
-
-    if (start == goal) {
-        printf("%lli\n", start);
-        return 0;
-    }
-
-    current_node = get_table(start);
-
-    current_path = add_list(start, current_path);
-
-    current_solution = NULL;
-    if (goal < start) direction = -1;
-    max_length = -1;
-    current_length = 1;
-    reachable = current_node->reachable;
-    if (reachable == NULL) return 1;
-    if (direction == 1) {
-        while (reachable != NULL) {
-            if (reachable->station > current_node->distance && reachable->station <= goal) {
-                tmp = get_table(reachable->station);
-                if (tmp->visited == 0 || tmp->visited < current_length) {
-                    current_length = current_length + 1;
-                    current_path = add_list_head(tmp->distance, current_path);
-                    explore_direct(tmp, &current_path, &current_solution, goal, &max_length, &current_length);
-                    current_path = remove_list(tmp->distance, current_path);
-                    current_length = current_length - 1;
-                }
-            }
-            reachable = reachable->next;
-        }
-    } else {
-        while (reachable != NULL) {
-            if (reachable->station < current_node->distance && reachable->station >= goal) {
-                tmp = get_table(reachable->station);
-                if (tmp->visited == 0 || tmp->visited < current_length) {
-                    current_length = current_length + 1;
-                    current_path = add_list_head(tmp->distance, current_path);
-                    explore_inverse(tmp, &current_path, &current_solution, goal, &max_length, &current_length);
-                    current_path = remove_list(tmp->distance, current_path);
-                    current_length = current_length - 1;
-                }
-            }
-            reachable = reachable->next;
-        }
-    }
-
-
-    if (current_solution == NULL) return 1;
-    if (direction == -1) print_reverse(current_solution);
-    else print_direct(current_solution);
-
-    printf("\n");
-    return 0;
-}
-
-void explore_direct(station_t *node, solution_t **path, solution_t **solution, long long goal,
-                    int *max_length_ptr, int *current_length_ptr) {
-
-    solution_t *tmp_s = NULL, *tmp_p = NULL, *reachable = NULL;
-    station_t *tmp = NULL;
-    if (node->distance == goal) {
-        if (*solution == NULL || *current_length_ptr < *max_length_ptr) {
-            *solution = copy_list(*path);
-            *max_length_ptr = *current_length_ptr;
-            return;
-        }
-        if (*max_length_ptr == *current_length_ptr) {
-            tmp_s = *solution;
-            tmp_p = *path;
-            while (tmp_s != NULL && tmp_p != NULL) {
-                if (tmp_s->station < tmp_p->station) return;
-                if (tmp_s->station > tmp_p->station) {
-                    *solution = copy_list(*path);
-                    *max_length_ptr = *current_length_ptr;
-                    return;
-                }
-                tmp_s = tmp_s->next;
-                tmp_p = tmp_p->next;
-            }
-        }
-    }
-    if (*max_length_ptr != -1 && *current_length_ptr >= *max_length_ptr) return;
-    reachable = node->reachable;
-    while (reachable != NULL) {
-        if (reachable->station > node->distance && reachable->station <= goal) {
-            tmp = get_table(reachable->station);
-            if (tmp->visited == 0 || tmp->visited > *current_length_ptr) {
-                tmp->visited = *current_length_ptr;
-                *current_length_ptr = *current_length_ptr + 1;
-                *path = add_list_head(tmp->distance, *path);
-                explore_direct(tmp, path, solution, goal, max_length_ptr, current_length_ptr);
-                *path = remove_list(tmp->distance, *path);
-                *current_length_ptr = *current_length_ptr - 1;
-            }
-        }
-        reachable = reachable->next;
-    }
-}
-
-void explore_inverse(station_t *node, solution_t **path, solution_t **solution, long long goal,
-                     int *max_length_ptr, int *current_length_ptr) {
-
-    solution_t *tmp_s = NULL, *tmp_p = NULL, *reachable = NULL, *tmp_reach = NULL;
-    station_t *tmp = NULL;
-
-    if (node->distance == goal) {
-
-        if (*solution == NULL || *current_length_ptr < *max_length_ptr) {
-            *solution = copy_list(*path);
-            *max_length_ptr = *current_length_ptr;
-            return;
-        }
-        if (*max_length_ptr == *current_length_ptr) {
-
-            tmp_s = *solution;
-            tmp_p = *path;
-            while (tmp_s != NULL && tmp_p != NULL) {
-                if (tmp_s->station < tmp_p->station) return;
-                if (tmp_s->station > tmp_p->station) {
-                    *solution = copy_list(*path);
-                    *max_length_ptr = *current_length_ptr;
-                    return;
-                }
-                tmp_s = tmp_s->next;
-                tmp_p = tmp_p->next;
-            }
-        }
-    }
-    if (*max_length_ptr != -1 && *current_length_ptr >= *max_length_ptr) return;
-    reachable = node->reachable;
-    while (reachable != NULL) {
-        if (reachable->station < node->distance && reachable->station >= goal) {
-            tmp = get_table(reachable->station);
-            if (tmp->visited == 0 || tmp->visited > *current_length_ptr) {
-                tmp->visited = *current_length_ptr;
-                *current_length_ptr = *current_length_ptr + 1;
-                *path = add_list_head(tmp->distance, *path);
-                explore_inverse(tmp, path, solution, goal, max_length_ptr, current_length_ptr);
-                *path = remove_list(tmp->distance, *path);
-                *current_length_ptr = *current_length_ptr - 1;
-            }
-            /*
-            if (*solution != NULL && tmp->visited != 0 && tmp->visited == *current_length_ptr) {
-                tmp_reach = *solution;
-                while (tmp_reach != NULL && tmp_reach->station == tmp->distance) tmp_reach = tmp_reach->next;
-                if (tmp_reach != NULL) {
-                    tmp_reach = tmp_reach->next;
-                    if (node->distance < tmp_reach->station) {
-                        //copy_partly(*path, solution);
-                    }
-                }
-            }
-             */
-        }
-        reachable = reachable->next;
-    }
-}
-
-
-solution_t *add_list(long long val, solution_t *head) {
-    solution_t *current = NULL, *tmp = NULL;
-
-    if (head == NULL) {
-        head = (solution_t *) malloc(sizeof(solution_t));
-        //if (head == NULL) return NULL;
-        head->next = NULL;
-        head->station = val;
-
-        return head;
-    }
-    if (head->station == val) return head;
-    if (head->station < val) {
-        tmp = (solution_t *) malloc(sizeof(solution_t));
-        if (tmp == NULL) return NULL;
-        tmp->next = head;
-        tmp->station = val;
-        return tmp;
-    }
-
-    current = head;
-    while (current->next != NULL && current->next->station > val) {
-        if (current->station == val) return head;
-        current = current->next;
-    }
-
-    if (current->next == NULL) {
-        tmp = (solution_t *) malloc(sizeof(solution_t));
-        if (tmp == NULL) return NULL;
-        tmp->next = NULL;
-        current->next = tmp;
-        tmp->station = val;
-    }
-    if (current->next->station == val) return head;
-    tmp = (solution_t *) malloc(sizeof(solution_t));
-    if (tmp == NULL) return NULL;
-    tmp->next = NULL;
-    tmp->next = current->next;
-    current->next = tmp;
-    tmp->station = val;
-
-
-    return head;
-}
-
-solution_t *add_list_head(long long val, solution_t *head) {
-    solution_t *tmp = NULL;
-    tmp = (solution_t *) malloc(sizeof(solution_t));
-    if (tmp == NULL) return NULL;
-    tmp->next = head;
-    tmp->station = val;
-    return tmp;
-}
-
-
-solution_t *remove_list(long long val, solution_t *head) {
-    solution_t *current = head, *prv = NULL;
-    if (head == NULL) return NULL;
-    if (head->station == val) {
-        prv = head->next;
-        //free(head);
-        head = NULL;
-        return prv;
-    }
-    prv = current;
-    current = current->next;
-    while (current != NULL) {
-        if (current->station == val) {
-            prv->next = current->next;
-            free(current);
-            current = NULL;
-            return head;
-        }
-        prv = current;
-        current = current->next;
-    }
-
-
-    return head;
-}
-
-
-solution_t *copy_list(solution_t *path) {
-    solution_t *p = NULL, *head = NULL;
-
-    if (path == NULL) return NULL;
-    head = (solution_t *) malloc(sizeof(solution_t));
-    if (head == NULL) return NULL;
-    head->next = NULL;
-    head->station = 0;
-    p = head;
-
-    while (path != NULL) {
-        p->station = path->station;
-        p->next = NULL;
-        if (path->next == NULL) {
-            p->next = NULL;
-            return head;
-        }
-        p->next = (solution_t *) malloc(sizeof(solution_t));
-        if (p->next == NULL) return NULL;
-        p->next->station = 0;
-        p->next->next = NULL;
-        p = p->next;
-        path = path->next;
-    }
-    return head;
-}
-
-solution_t *copy_partly(solution_t *path, solution_t **sol) {
-    solution_t *p = NULL, *head = NULL;
-
-    if (path == NULL) return NULL;
-    if (sol == NULL || *sol == NULL) return path;
-    p = *sol;
-    while (p != NULL && p->station != path->station) {
-        p = p->next;
-    }
-    while (p != NULL) {
-        p->station = path->station;
-        path = path->next;
-        p = p->next;
-    }
-
-    return head;
-}
-
-void print_stations() {
-    printf("Stations:\n");
-    long long i = 0;
-    station_t *tmp_s = NULL;
-    for (i = 0; i < SIZE; i++) {
-        tmp_s = stations_table[i];
-        if (tmp_s != NULL) {
-            printf("[%lli]:", i);
-            while (tmp_s != NULL) {
-                printf(" %lli", tmp_s->distance);
-                tmp_s = tmp_s->next;
-            }
-            printf("\n");
-        }
-    }
-    printf("\n");
-}
-
-void resetter() {
-    long long i = 0;
-    station_t *tmp = NULL;
-    for (i = 0; i <= most_distant_station; i++) {
-        tmp = get_table(i);
-        if (tmp != NULL) tmp->visited = 0;
-    }
-
-}
-
-void print_reverse(solution_t *head) {
-    if (head == NULL) return;
-    print_reverse(head->next);
-
-    if (head->next != NULL) printf(" ");
-    printf("%lli", head->station);
-}
-
-void print_direct(solution_t *head) {
-
-    printf("%lli", head->station);
-    head = head->next;
-    while (head != NULL) {
-        printf(" %lli", head->station);
-        head = head->next;
-    }
 }
 
 int get_input() {
@@ -622,50 +197,207 @@ int get_input() {
     return 0;
 }
 
-int add_to_table(station_t *new_station) {
-    long index;
-    station_t *p = NULL;
-    index = new_station->distance % SIZE;
-    p = stations_table[index];
-    stations_table[index] = new_station;
-    new_station->next = p;
-    return 0;
+struct Station *createStation(long long data) {
+    struct Station *newStation = (struct Station *) malloc(sizeof(struct Station));
+    newStation->data = data;
+    newStation->color = RED;
+    newStation->parent = NULL;
+    newStation->left = NULL;
+    newStation->right = NULL;
+    return newStation;
 }
 
-int remove_table(long long distance) {
-    long index = distance % SIZE;
-    station_t *p = NULL, *prv = NULL;
+void leftRotate(struct Station *x) {
+    struct Station *y = x->right;
+    x->right = y->left;
 
-    if (stations_table[index] == NULL) return 1;
-    if (stations_table[index]->distance == distance) {
-        stations_table[index] = stations_table[index]->next;
-        return 0;
-    }
-    prv = stations_table[index];
-    p = prv->next;
-    while (p != NULL && p->distance >= distance) {
-        if (p->distance == distance) {
+    if (y->left != NULL)
+        y->left->parent = x;
 
-            prv->next = p->next;
-            p->next = NULL;
-            free(p);
-            return 0;
+    y->parent = x->parent;
+
+    if (x->parent == NULL)
+        root = y;
+    else if (x == x->parent->left)
+        x->parent->left = y;
+    else
+        x->parent->right = y;
+
+    y->left = x;
+    x->parent = y;
+}
+
+void rightRotate(struct Station *y) {
+    struct Station *x = y->left;
+    y->left = x->right;
+
+    if (x->right != NULL)
+        x->right->parent = y;
+
+    x->parent = y->parent;
+
+    if (y->parent == NULL)
+        root = x;
+    else if (y == y->parent->left)
+        y->parent->left = x;
+    else
+        y->parent->right = x;
+
+    x->right = y;
+    y->parent = x;
+}
+
+void insertFixup(struct Station *z) {
+    while (z->parent != NULL && z->parent->color == RED) {
+        if (z->parent == z->parent->parent->left) {
+            struct Station *y = z->parent->parent->right;
+            if (y != NULL && y->color == RED) {
+                z->parent->color = BLACK;
+                y->color = BLACK;
+                z->parent->parent->color = RED;
+                z = z->parent->parent;
+            } else {
+                if (z == z->parent->right) {
+                    z = z->parent;
+                    leftRotate(z);
+                }
+                z->parent->color = BLACK;
+                z->parent->parent->color = RED;
+                rightRotate(z->parent->parent);
+            }
+        } else {
+            // Symmetric cases
+            // ...
         }
-        prv = p;
-        p = p->next;
     }
-    return 1;
-
+    (root)->color = BLACK;
 }
 
-station_t *get_table(long long distance) {
-    long index = distance % SIZE;
-    station_t *p = NULL;
-    if (stations_table[index] == NULL) return NULL;
-    p = stations_table[index];
-    while (p != NULL) {
-        if (p->distance == distance) return p;
-        p = p->next;
+void insert(int data) {
+    struct Station *z = createStation(data);
+    struct Station *y = NULL;
+    struct Station *x = root;
+
+    while (x != NULL) {
+        y = x;
+        if (z->data < x->data)
+            x = x->left;
+        else
+            x = x->right;
     }
-    return NULL;
+
+    z->parent = y;
+
+    if (y == NULL)
+        root = z;
+    else if (z->data < y->data)
+        y->left = z;
+    else
+        y->right = z;
+
+    insertFixup(z);
+}
+
+void deleteFixup(struct Station* x) {
+    while (x != root && (x == NULL || x->color == BLACK)) {
+        if (x == x->parent->left) {
+            struct Station* w = x->parent->right;
+            if (w->color == RED) {
+                w->color = BLACK;
+                x->parent->color = RED;
+                leftRotate(x->parent);
+                w = x->parent->right;
+            }
+            if ((w->left == NULL || w->left->color == BLACK) &&
+                (w->right == NULL || w->right->color == BLACK)) {
+                w->color = RED;
+                x = x->parent;
+            } else {
+                if (w->right == NULL || w->right->color == BLACK) {
+                    if (w->left != NULL)
+                        w->left->color = BLACK;
+                    w->color = RED;
+                    rightRotate(w);
+                    w = x->parent->right;
+                }
+                w->color = x->parent->color;
+                x->parent->color = BLACK;
+                if (w->right != NULL)
+                    w->right->color = BLACK;
+                leftRotate(x->parent);
+                x = root;
+            }
+        } else {
+            // Symmetric cases
+            // ...
+        }
+    }
+    if (x != NULL)
+        x->color = BLACK;
+}
+
+void deleteStation(struct Station* z) {
+    struct Station* y = z;
+    struct Station* x;
+    enum Color yOriginalColor = y->color;
+
+    if (z->left == NULL) {
+        x = z->right;
+        transplant(z, z->right);
+    } else if (z->right == NULL) {
+        x = z->left;
+        transplant(z, z->left);
+    } else {
+        y = minimumStation(z->right);
+        yOriginalColor = y->color;
+        x = y->right;
+        if (y->parent == z)
+            x->parent = y;
+        else {
+            transplant(y, y->right);
+            y->right = z->right;
+            y->right->parent = y;
+        }
+        transplant(z, y);
+        y->left = z->left;
+        y->left->parent = y;
+        y->color = z->color;
+    }
+    if (yOriginalColor == BLACK)
+        deleteFixup(x);
+    free(z);
+}
+
+// Utility function to find the minimum Station in a subtree
+struct Station* minimumStation(struct Station* station) {
+    while (station->left != NULL)
+        station = station->left;
+    return station;
+}
+
+// Utility function to replace one subtree with another
+void transplant(struct Station* u, struct Station* v) {
+    if (u->parent == NULL)
+        root = v;
+    else if (u == u->parent->left)
+        u->parent->left = v;
+    else
+        u->parent->right = v;
+    if (v != NULL)
+        v->parent = u->parent;
+}
+
+void print_stations(){
+    long long max, i, j;
+    if(most_distant_station == -1) max = SIZE;
+    else max = most_distant_station;
+    for(i=0; i<max; i++){
+        if(stations_table[i]!=NULL){
+            printf("%lli :", stations_table[i]->data);
+            for(j=0; j<512; j++){
+                printf(" %lli", stations_table[i]->cars[j]);
+            }
+            printf("\n");
+        }
+    }
 }

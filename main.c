@@ -1,11 +1,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #define SIZE 2097152
 enum Color {
     RED, BLACK
 };
 
+struct Solution {
+    long long data;
+    struct Solution *next;
+};
 
 struct Station {
     long long data, cars[512];
@@ -18,6 +23,7 @@ struct Station {
 struct Station *root = NULL;
 long long most_distant_station = -1;
 struct Station **stations_table = NULL;
+struct Solution *solution = NULL;
 char input[30];
 
 
@@ -29,7 +35,13 @@ int add_car();
 
 int remove_car();
 
+int path_planner();
+
+void explore_direct(struct Station *node, long long reach);
+
 struct Station *createStation(long long data);
+
+void inOrderTraversal(struct Station *node);
 
 void leftRotate(struct Station *x);
 
@@ -37,7 +49,7 @@ void rightRotate(struct Station *y);
 
 void insertFixup(struct Station *z);
 
-void insert(int data);
+struct Station *insert(long long data);
 
 void deleteFixup(struct Station *x);
 
@@ -50,6 +62,8 @@ void transplant(struct Station *u, struct Station *v);
 int get_input();
 
 void print_stations();
+
+void add_list(long long data);
 
 int main() {
     stations_table = (struct Station **) malloc(SIZE * sizeof(struct Station));
@@ -73,26 +87,57 @@ int main() {
             else printf("non rottamata\n");
 
         } else if (strcmp(input, "pianifica-percorso") == 0) {
-            print_stations();
-            //if (path_planner() == 1) printf("nessun percorso\n");
+            //inOrderTraversal(root);
+            printf("\n");
+            //print_stations();
+
+            if (path_planner() == 1) printf("nessun percorso\n");
 
         } else {
             printf("problem");
-
         }
     }
     return 0;
 }
 
-int add_station(){
+int path_planner() {
+    long long start, goal, to_reach;
+    struct Station *curr, *prv;
+    struct Solution *tmp_sol;
+    int direction, flag;
+    if (fscanf(stdin, "%lli", &start) == EOF) return 1;
+    if (fscanf(stdin, "%lli", &goal) == EOF) return 1;
+    if(root == NULL) return 1;
+    if(stations_table[start] == NULL || stations_table[goal] == NULL) return 1;
+    if (start == goal) {
+        printf("%lli\n", start);
+        return 0;
+    }
+    solution = NULL;
+    to_reach = goal;
+    curr = root;
+    direction = 1;
+    if(start > goal) direction = -1;
+    if(direction == 1) {
+        tmp_sol = solution;
+        while(tmp_sol != NULL){
+            printf(" %lli", tmp_sol->data);
+            tmp_sol = tmp_sol->next;
+        }
+    }
+}
+
+int add_station() {
     long long i, j, distance, n_auto, autonomy, pos;
     int flag;
     struct Station *tmp, **tmp_table = NULL;
 
     if (fscanf(stdin, "%lli", &distance) == EOF) return 1;
     if (fscanf(stdin, "%lli", &n_auto) == EOF) return 1;
-    if(stations_table[distance] != NULL) return 1;
-    tmp = createStation(distance);
+    if (stations_table[distance] != NULL) return 1;
+    tmp = insert(distance);
+    stations_table[distance] = tmp;
+
     if (n_auto == 0) return 0;
     for (i = 0; i < n_auto; i++) {
         flag = 0;
@@ -118,21 +163,21 @@ int add_station(){
         stations_table = tmp_table; //assigning the address held by q to p for the array
         tmp_table = NULL;
     }
-    stations_table[distance] = tmp;
+
     return 0;
 }
 
-int remove_station(){
+int remove_station() {
     long long distance;
     struct Station *tmp;
     if (fscanf(stdin, "%lli", &distance) == EOF) return 1;
     tmp = stations_table[distance];
-    if(tmp == NULL) return 1;
+    if (tmp == NULL) return 1;
     deleteStation(tmp);
     return 0;
 }
 
-int add_car(){
+int add_car() {
     int pos = 0, j = 0;
     long long distance, autonomy;
     struct Station *tmp = NULL;
@@ -156,7 +201,7 @@ int add_car(){
     return 0;
 }
 
-int remove_car(){
+int remove_car() {
     int i, first = 1;
     long long distance, autonomy;
     long long tmp_cars[512] = {0};
@@ -195,6 +240,14 @@ int get_input() {
         input[i] = '\0';
     }
     return 0;
+}
+
+void inOrderTraversal(struct Station *node) {
+    if (node != NULL) {
+        inOrderTraversal(node->left);
+        printf("%lli ", node->data);
+        inOrderTraversal(node->right);
+    }
 }
 
 struct Station *createStation(long long data) {
@@ -248,9 +301,12 @@ void rightRotate(struct Station *y) {
 }
 
 void insertFixup(struct Station *z) {
+    struct Station *y;
     while (z->parent != NULL && z->parent->color == RED) {
+        if (z->parent->parent == NULL) break;
+
         if (z->parent == z->parent->parent->left) {
-            struct Station *y = z->parent->parent->right;
+            y = z->parent->parent->right;
             if (y != NULL && y->color == RED) {
                 z->parent->color = BLACK;
                 y->color = BLACK;
@@ -266,14 +322,27 @@ void insertFixup(struct Station *z) {
                 rightRotate(z->parent->parent);
             }
         } else {
-            // Symmetric cases
-            // ...
+            y = z->parent->parent->left;
+            if (y != NULL && y->color == RED) {
+                z->parent->color = BLACK;
+                y->color = BLACK;
+                z->parent->parent->color = RED;
+                z = z->parent->parent;
+            } else {
+                if (z == z->parent->left) {
+                    z = z->parent;
+                    rightRotate(z);
+                }
+                z->parent->color = BLACK;
+                z->parent->parent->color = RED;
+                leftRotate(z->parent->parent);
+            }
+
         }
     }
-    (root)->color = BLACK;
 }
 
-void insert(int data) {
+struct Station *insert(long long data) {
     struct Station *z = createStation(data);
     struct Station *y = NULL;
     struct Station *x = root;
@@ -296,12 +365,13 @@ void insert(int data) {
         y->right = z;
 
     insertFixup(z);
+    return z;
 }
 
-void deleteFixup(struct Station* x) {
+void deleteFixup(struct Station *x) {
     while (x != root && (x == NULL || x->color == BLACK)) {
         if (x == x->parent->left) {
-            struct Station* w = x->parent->right;
+            struct Station *w = x->parent->right;
             if (w->color == RED) {
                 w->color = BLACK;
                 x->parent->color = RED;
@@ -336,9 +406,9 @@ void deleteFixup(struct Station* x) {
         x->color = BLACK;
 }
 
-void deleteStation(struct Station* z) {
-    struct Station* y = z;
-    struct Station* x;
+void deleteStation(struct Station *z) {
+    struct Station *y = z;
+    struct Station *x;
     enum Color yOriginalColor = y->color;
 
     if (z->left == NULL) {
@@ -369,14 +439,15 @@ void deleteStation(struct Station* z) {
 }
 
 // Utility function to find the minimum Station in a subtree
-struct Station* minimumStation(struct Station* station) {
+struct Station *minimumStation(struct Station *station) {
+    if(station == NULL) return NULL;
     while (station->left != NULL)
         station = station->left;
     return station;
 }
 
 // Utility function to replace one subtree with another
-void transplant(struct Station* u, struct Station* v) {
+void transplant(struct Station *u, struct Station *v) {
     if (u->parent == NULL)
         root = v;
     else if (u == u->parent->left)
@@ -387,14 +458,24 @@ void transplant(struct Station* u, struct Station* v) {
         v->parent = u->parent;
 }
 
-void print_stations(){
+void add_list(long long data) {
+    struct Solution *tmp = NULL;
+    tmp = (struct Solution *) malloc(sizeof(struct Solution));
+    if (tmp == NULL) return;
+    if (solution != NULL) tmp->next = solution;
+    else tmp->next = NULL;
+    tmp->data = data;
+    solution = tmp;
+}
+
+void print_stations() {
     long long max, i, j;
-    if(most_distant_station == -1) max = SIZE;
+    if (most_distant_station == -1) max = SIZE;
     else max = most_distant_station;
-    for(i=0; i<max; i++){
-        if(stations_table[i]!=NULL){
+    for (i = 0; i < max; i++) {
+        if (stations_table[i] != NULL) {
             printf("%lli :", stations_table[i]->data);
-            for(j=0; j<512; j++){
+            for (j = 0; j < 512; j++) {
                 printf(" %lli", stations_table[i]->cars[j]);
             }
             printf("\n");

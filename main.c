@@ -21,7 +21,8 @@ struct Station {
 };
 
 struct Station *root = NULL;
-long long most_distant_station = -1;
+struct Station *curr = NULL, *prv = NULL;
+long long most_distant_station = -1, start, goal, to_reach;
 struct Station **stations_table = NULL;
 struct Solution *solution = NULL;
 char input[30];
@@ -37,7 +38,7 @@ int remove_car();
 
 int path_planner();
 
-void explore_direct(struct Station *node, long long reach);
+int explore_direct(struct Station *);
 
 struct Station *createStation(long long data);
 
@@ -88,9 +89,7 @@ int main() {
 
         } else if (strcmp(input, "pianifica-percorso") == 0) {
             //inOrderTraversal(root);
-            printf("\n");
             //print_stations();
-
             if (path_planner() == 1) printf("nessun percorso\n");
 
         } else {
@@ -101,10 +100,8 @@ int main() {
 }
 
 int path_planner() {
-    long long start, goal, to_reach;
-    struct Station *curr, *prv;
     struct Solution *tmp_sol;
-    int direction, flag;
+    int direction;
     if (fscanf(stdin, "%lli", &start) == EOF) return 1;
     if (fscanf(stdin, "%lli", &goal) == EOF) return 1;
     if(root == NULL) return 1;
@@ -113,18 +110,41 @@ int path_planner() {
         printf("%lli\n", start);
         return 0;
     }
+    free(solution);
     solution = NULL;
+    add_list(goal);
     to_reach = goal;
     curr = root;
     direction = 1;
     if(start > goal) direction = -1;
     if(direction == 1) {
         tmp_sol = solution;
+        while(solution->data != start){
+            if(explore_direct(root) == 1) return 1;
+        }
+        printf("%lli", solution->data);
+        tmp_sol = solution->next;
         while(tmp_sol != NULL){
             printf(" %lli", tmp_sol->data);
             tmp_sol = tmp_sol->next;
         }
+        printf("\n");
     }
+    return 0;
+}
+
+int explore_direct(struct Station *node){
+    if (node != NULL) {
+        if(node->data >= start && node->data < to_reach && node->data + node->cars[0] >= to_reach){
+            add_list(node->data);
+
+            to_reach = node->data;
+            return 0;
+        }
+        if(explore_direct(node->left) == 0) return 0;
+        if(explore_direct(node->right) == 0) return 0;
+    }
+    return 1;
 }
 
 int add_station() {
@@ -369,9 +389,10 @@ struct Station *insert(long long data) {
 }
 
 void deleteFixup(struct Station *x) {
+    struct Station *w;
     while (x != root && (x == NULL || x->color == BLACK)) {
         if (x == x->parent->left) {
-            struct Station *w = x->parent->right;
+            w = x->parent->right;
             if (w->color == RED) {
                 w->color = BLACK;
                 x->parent->color = RED;
@@ -398,8 +419,32 @@ void deleteFixup(struct Station *x) {
                 x = root;
             }
         } else {
-            // Symmetric cases
-            // ...
+            w = x->parent->right;
+            if (w->color == RED) {
+                w->color = BLACK;
+                x->parent->color = RED;
+                rightRotate(x->parent);
+                w = x->parent->left;
+            }
+            if ((w->right == NULL || w->right->color == BLACK) &&
+                (w->left == NULL || w->left->color == BLACK)) {
+                w->color = RED;
+                x = x->parent;
+            } else {
+                if (w->left == NULL || w->left->color == BLACK) {
+                    if (w->right != NULL)
+                        w->right->color = BLACK;
+                    w->color = RED;
+                    rightRotate(w);
+                    w = x->parent->left;
+                }
+                w->color = x->parent->color;
+                x->parent->color = BLACK;
+                if (w->right != NULL)
+                    w->right->color = BLACK;
+                leftRotate(x->parent);
+                x = root;
+            }
         }
     }
     if (x != NULL)
@@ -421,9 +466,9 @@ void deleteStation(struct Station *z) {
         y = minimumStation(z->right);
         yOriginalColor = y->color;
         x = y->right;
-        if (y->parent == z)
+        if (y->parent == z && x!=NULL)
             x->parent = y;
-        else {
+        else if(y->right != NULL){
             transplant(y, y->right);
             y->right = z->right;
             y->right->parent = y;

@@ -146,10 +146,10 @@ int add_station() {
         tmp = stations_table[st_l->station];
         if (tmp != NULL && i != distance) {
             if (i < distance && tmp->parked_cars[0] + tmp->distance > distance) {
-                tmp->reachable_direct = add_list(distance, tmp->reachable_direct);
+                tmp->reachable_direct = add_list_head(distance, tmp->reachable_direct);
             }
             if (i > distance && tmp->distance - tmp->parked_cars[0] < distance) {
-                tmp->reachable_inverse = add_list(distance, tmp->reachable_inverse);
+                tmp->reachable_inverse = add_list_head(distance, tmp->reachable_inverse);
             }
         }
         st_l = st_l->next;
@@ -172,17 +172,25 @@ int add_station() {
 
     }
     //check for itself
+    st_l = stations_created;
+    while (st_l != NULL) {
+        i = st_l->station;
+        if (stations_table[i] != NULL && i != distance) {
+            if (i > distance) new_station->reachable_direct = add_list_head(i, new_station->reachable_direct);
+            else if (i < distance) new_station->reachable_inverse = add_list_head(i, new_station->reachable_inverse);
+        }
+        st_l = st_l->next;
+    }
+/*
     i = 0;
     if (distance > new_station->parked_cars[0]) i = distance - new_station->parked_cars[0];
     while (i <= distance + new_station->parked_cars[0]) {
-        if (stations_table[i] != NULL && i != distance) {
-            if (i > distance) new_station->reachable_direct = add_list(i, new_station->reachable_direct);
-            else if (i < distance) new_station->reachable_inverse = add_list(i, new_station->reachable_inverse);
-        }
+
         i++;
     }
-
+*/
     return 0;
+
 }
 
 
@@ -211,6 +219,7 @@ int add_car() {
     int pos = 0, j = 0, flag = 0;
     long long distance, autonomy, i = 0;
     station_t *tmp = NULL;
+    solution_t *st_l = NULL;
     if (fscanf(stdin, "%lli", &distance) == EOF) return 1;
     if (fscanf(stdin, "%lli", &autonomy) == EOF) return 1;
     if (autonomy == 0) return 0;
@@ -231,14 +240,14 @@ int add_car() {
     }
     tmp->parked_cars[pos] = autonomy;
     if (flag == 0) {
-        i = 0;
-        if (distance > tmp->parked_cars[0]) i = distance - tmp->parked_cars[0];
-        while (i <= distance + tmp->parked_cars[0]) {
-            if (stations_table[i] != NULL) {
-                if (i > distance) tmp->reachable_direct = add_list(i, tmp->reachable_direct);
-                else if (i < distance) tmp->reachable_inverse = add_list(i, tmp->reachable_inverse);
+        st_l = stations_created;
+        while (st_l != NULL) {
+            i = st_l->station;
+            if (stations_table[i] != NULL && i != distance) {
+                if (i > distance) tmp->reachable_direct = add_list_head(i, tmp->reachable_direct);
+                else if (i < distance) tmp->reachable_inverse = add_list_head(i, tmp->reachable_inverse);
             }
-            i++;
+            st_l = st_l->next;
         }
     }
 
@@ -273,10 +282,13 @@ int remove_car() {
     tmp = stations_table[distance];
 
     tmp2 = tmp->reachable_direct;
+
     while (tmp2 != NULL) {
         if (tmp2->station > distance + tmp->parked_cars[0])
             tmp->reachable_direct = remove_list(tmp2->station, tmp->reachable_direct);
+
         tmp2 = tmp2->next;
+
     }
     tmp2 = tmp->reachable_inverse;
     while (tmp2 != NULL) {
@@ -317,12 +329,14 @@ int path_planner() {
         while (reachable_direct != NULL) {
             if (reachable_direct->station > current_node->distance && reachable_direct->station <= goal) {
                 tmp = stations_table[reachable_direct->station];
-                if (tmp->visited == 0 || tmp->visited < current_length) {
-                    current_length = current_length + 1;
-                    current_path = add_list_head(tmp->distance, current_path);
-                    explore_direct(tmp, &current_path, &current_solution, goal, &max_length, &current_length);
-                    current_path = remove_list(tmp->distance, current_path);
-                    current_length = current_length - 1;
+                if (tmp != NULL) {
+                    if (tmp->visited == 0 || tmp->visited < current_length) {
+                        current_length = current_length + 1;
+                        current_path = add_list_head(tmp->distance, current_path);
+                        explore_direct(tmp, &current_path, &current_solution, goal, &max_length, &current_length);
+                        current_path = remove_list(tmp->distance, current_path);
+                        current_length = current_length - 1;
+                    }
                 }
             }
             reachable_direct = reachable_direct->next;
@@ -333,12 +347,14 @@ int path_planner() {
         while (reachable_inverse != NULL) {
             if (reachable_inverse->station < current_node->distance && reachable_inverse->station >= goal) {
                 tmp = stations_table[reachable_inverse->station];
-                if (tmp->visited == 0 || tmp->visited < current_length) {
-                    current_length = current_length + 1;
-                    current_path = add_list_head(tmp->distance, current_path);
-                    explore_inverse(tmp, &current_path, &current_solution, goal, &max_length, &current_length);
-                    current_path = remove_list(tmp->distance, current_path);
-                    current_length = current_length - 1;
+                if (tmp != NULL) {
+                    if (tmp->visited == 0 || tmp->visited < current_length) {
+                        current_length = current_length + 1;
+                        current_path = add_list_head(tmp->distance, current_path);
+                        explore_inverse(tmp, &current_path, &current_solution, goal, &max_length, &current_length);
+                        current_path = remove_list(tmp->distance, current_path);
+                        current_length = current_length - 1;
+                    }
                 }
             }
             reachable_inverse = reachable_inverse->next;
@@ -385,13 +401,15 @@ void explore_direct(station_t *node, solution_t **path, solution_t **solution, l
     while (reachable_direct != NULL) {
         if (reachable_direct->station > node->distance && reachable_direct->station <= goal) {
             tmp = stations_table[reachable_direct->station];
-            if (tmp->visited == 0 || tmp->visited > *current_length_ptr) {
-                tmp->visited = *current_length_ptr;
-                *current_length_ptr = *current_length_ptr + 1;
-                *path = add_list_head(tmp->distance, *path);
-                explore_direct(tmp, path, solution, goal, max_length_ptr, current_length_ptr);
-                *path = remove_list(tmp->distance, *path);
-                *current_length_ptr = *current_length_ptr - 1;
+            if (tmp != NULL) {
+                if (tmp->visited == 0 || tmp->visited > *current_length_ptr) {
+                    tmp->visited = *current_length_ptr;
+                    *current_length_ptr = *current_length_ptr + 1;
+                    *path = add_list_head(tmp->distance, *path);
+                    explore_direct(tmp, path, solution, goal, max_length_ptr, current_length_ptr);
+                    *path = remove_list(tmp->distance, *path);
+                    *current_length_ptr = *current_length_ptr - 1;
+                }
             }
         }
         reachable_direct = reachable_direct->next;
@@ -432,13 +450,15 @@ void explore_inverse(station_t *node, solution_t **path, solution_t **solution, 
     while (reachable_inverse != NULL) {
         if (reachable_inverse->station < node->distance && reachable_inverse->station >= goal) {
             tmp = stations_table[reachable_inverse->station];
-            if (tmp->visited == 0 || tmp->visited > *current_length_ptr) {
-                tmp->visited = *current_length_ptr;
-                *current_length_ptr = *current_length_ptr + 1;
-                *path = add_list_head(tmp->distance, *path);
-                explore_inverse(tmp, path, solution, goal, max_length_ptr, current_length_ptr);
-                *path = remove_list(tmp->distance, *path);
-                *current_length_ptr = *current_length_ptr - 1;
+            if (tmp != NULL) {
+                if (tmp->visited == 0 || tmp->visited > *current_length_ptr) {
+                    tmp->visited = *current_length_ptr;
+                    *current_length_ptr = *current_length_ptr + 1;
+                    *path = add_list_head(tmp->distance, *path);
+                    explore_inverse(tmp, path, solution, goal, max_length_ptr, current_length_ptr);
+                    *path = remove_list(tmp->distance, *path);
+                    *current_length_ptr = *current_length_ptr - 1;
+                }
             }
             /*
             if (*solution != NULL && tmp->visited != 0 && tmp->visited == *current_length_ptr) {
@@ -507,13 +527,15 @@ solution_t *add_list_head(long long val, solution_t *head) {
     solution_t *tmp = NULL;
     tmp = (solution_t *) malloc(sizeof(solution_t));
     if (tmp == NULL) return NULL;
-    tmp->next = head;
+    if (head != NULL) tmp->next = head;
+    else tmp->next = NULL;
     tmp->station = val;
     return tmp;
 }
 
 
 solution_t *remove_list(long long val, solution_t *head) {
+
     solution_t *current = head, *prv = NULL;
     if (head == NULL) return NULL;
     if (head->station == val) {
@@ -527,7 +549,7 @@ solution_t *remove_list(long long val, solution_t *head) {
     while (current != NULL) {
         if (current->station == val) {
             prv->next = current->next;
-            free(current);
+            //free(current);
             current = NULL;
             return head;
         }
@@ -602,11 +624,11 @@ void print_stations() {
 }
 
 void resetter() {
-    long long i = 0;
-    station_t *tmp = NULL;
-    for (i = 0; i <= most_distant_station; i++) {
-        tmp = stations_table[i];
-        if (tmp != NULL) tmp->visited = 0;
+    solution_t *st_l = NULL;
+    st_l = stations_created;
+    while (st_l != NULL) {
+        stations_table[st_l->station]->visited = 0;
+        st_l = st_l->next;
     }
 
 }

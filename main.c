@@ -40,6 +40,8 @@ int path_planner();
 
 int explore_direct(struct Station *);
 
+int explore_inverse();
+
 struct Station *createStation(long long data);
 
 void inOrderTraversal(struct Station *node);
@@ -90,6 +92,7 @@ int main() {
         } else if (strcmp(input, "pianifica-percorso") == 0) {
             //inOrderTraversal(root);
             //print_stations();
+
             if (path_planner() == 1) printf("nessun percorso\n");
 
         } else {
@@ -104,8 +107,8 @@ int path_planner() {
     int direction;
     if (fscanf(stdin, "%lli", &start) == EOF) return 1;
     if (fscanf(stdin, "%lli", &goal) == EOF) return 1;
-    if(root == NULL) return 1;
-    if(stations_table[start] == NULL || stations_table[goal] == NULL) return 1;
+    if (root == NULL) return 1;
+    if (stations_table[start] == NULL || stations_table[goal] == NULL) return 1;
     if (start == goal) {
         printf("%lli\n", start);
         return 0;
@@ -116,35 +119,57 @@ int path_planner() {
     to_reach = goal;
     curr = root;
     direction = 1;
-    if(start > goal) direction = -1;
-    if(direction == 1) {
-        tmp_sol = solution;
-        while(solution->data != start){
-            if(explore_direct(root) == 1) return 1;
+    if (start > goal) direction = -1;
+    if (direction == 1) {
+        while (solution->data != start) {
+            if (explore_direct(root) == 1) return 1;
         }
-        printf("%lli", solution->data);
-        tmp_sol = solution->next;
-        while(tmp_sol != NULL){
-            printf(" %lli", tmp_sol->data);
-            tmp_sol = tmp_sol->next;
-        }
-        printf("\n");
+    }else{
+        if(explore_inverse() == 1) return 1;
     }
+    printf("%lli", solution->data);
+    tmp_sol = solution->next;
+    while (tmp_sol != NULL) {
+        printf(" %lli", tmp_sol->data);
+        tmp_sol = tmp_sol->next;
+    }
+    printf("\n");
     return 0;
 }
 
-int explore_direct(struct Station *node){
+int explore_direct(struct Station *node) {
     if (node != NULL) {
-        if(node->data >= start && node->data < to_reach && node->data + node->cars[0] >= to_reach){
+        if (node->data >= start && node->data < to_reach && node->data + node->cars[0] >= to_reach) {
             add_list(node->data);
-
             to_reach = node->data;
             return 0;
         }
-        if(explore_direct(node->left) == 0) return 0;
-        if(explore_direct(node->right) == 0) return 0;
+        if (explore_direct(node->left) == 0) return 0;
+        if (explore_direct(node->right) == 0) return 0;
     }
     return 1;
+}
+
+int explore_inverse() {
+    int flag=0;
+    long long i=0;
+    curr = stations_table[start];
+    while(1){
+        if(curr->data - curr->cars[0] <= goal){
+            add_list(curr->data);
+            return 0;
+        }
+        flag =0;
+        for(i = curr->data - curr->cars[0]; i > curr->data ; i++){
+            if(stations_table[i]!=NULL){
+                curr = stations_table[i];
+                add_list(curr->data);
+                flag=1;
+                break;
+            }
+        }
+        if(flag == 0) return 1;
+    }
 }
 
 int add_station() {
@@ -154,11 +179,16 @@ int add_station() {
 
     if (fscanf(stdin, "%lli", &distance) == EOF) return 1;
     if (fscanf(stdin, "%lli", &n_auto) == EOF) return 1;
-    if (stations_table[distance] != NULL) return 1;
+    if (stations_table[distance] != NULL){
+
+        for(i=0;i<n_auto;i++) if (fscanf(stdin, "%lli", &autonomy) == EOF) return 1;
+        return 1;
+    }
     tmp = insert(distance);
     stations_table[distance] = tmp;
 
     if (n_auto == 0) return 0;
+
     for (i = 0; i < n_auto; i++) {
         flag = 0;
         if (fscanf(stdin, "%lli", &autonomy) == EOF) return 1;
@@ -466,9 +496,9 @@ void deleteStation(struct Station *z) {
         y = minimumStation(z->right);
         yOriginalColor = y->color;
         x = y->right;
-        if (y->parent == z && x!=NULL)
+        if (y->parent == z && x != NULL)
             x->parent = y;
-        else if(y->right != NULL){
+        else if (y->right != NULL) {
             transplant(y, y->right);
             y->right = z->right;
             y->right->parent = y;
@@ -485,7 +515,7 @@ void deleteStation(struct Station *z) {
 
 // Utility function to find the minimum Station in a subtree
 struct Station *minimumStation(struct Station *station) {
-    if(station == NULL) return NULL;
+    if (station == NULL) return NULL;
     while (station->left != NULL)
         station = station->left;
     return station;

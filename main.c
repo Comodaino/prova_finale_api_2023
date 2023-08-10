@@ -125,6 +125,7 @@ int path_planner() {
             if (explore_direct(root) == 1) return 1;
         }
     }else{
+        return 1;
         if(explore_inverse() == 1) return 1;
     }
     printf("%lli", solution->data);
@@ -414,7 +415,7 @@ struct Station *insert(long long data) {
     else
         y->right = z;
 
-    insertFixup(z);
+    //insertFixup(z);
     return z;
 }
 
@@ -509,7 +510,7 @@ void deleteStation(struct Station *z) {
         y->color = z->color;
     }
     if (yOriginalColor == BLACK)
-        deleteFixup(x);
+        //deleteFixup(x);
     free(z);
 }
 

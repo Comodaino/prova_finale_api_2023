@@ -12,6 +12,12 @@ struct Solution {
     struct Solution *next;
 };
 
+struct StackNode {
+    long long data;
+    long long autonomy;
+    struct StackNode *next;
+};
+
 struct Station {
     long long data, cars[512];
     enum Color color;
@@ -24,8 +30,10 @@ struct Station {
 struct Station *root = NULL;
 struct Station *curr = NULL, *prv = NULL;
 long long most_distant_station = -1, start, goal, to_reach;
-struct Solution *solution = NULL, *path=NULL;
+struct Solution *solution = NULL, *path = NULL;
+struct StackNode *stack = NULL;
 char input[30];
+struct Station *local_min = NULL;
 int current_length, max_length;
 
 int add_station();
@@ -42,7 +50,7 @@ int explore_direct(struct Station *);
 
 int explore_inverse();
 
-int explore_inverse_function(struct Station *);
+void explore_inverse_function(struct Station *);
 
 struct Station *createStation(long long);
 
@@ -62,7 +70,7 @@ void deleteFixup(struct Station *x);
 
 void deleteStation(struct Station *z);
 
-struct Station *minimumStation(struct Station *station);
+struct Station *minimumStation(struct Station *);
 
 void transplant(struct Station *u, struct Station *v);
 
@@ -70,7 +78,15 @@ int get_input();
 
 void print_stations();
 
-void add_list(long long data);
+void create_stack(struct Station *);
+
+void add_stack(long long);
+
+void add_list(long long);
+
+void add_path(long long);
+
+void copy_list(struct Solution *, struct Solution *);
 
 int main() {
     while (get_input() == 0) {
@@ -106,7 +122,7 @@ int main() {
 
 int path_planner() {
     struct Solution *tmp_sol;
-    int direction;
+    int direction, flag;
     if (fscanf(stdin, "%lli", &start) == EOF) return 1;
     if (fscanf(stdin, "%lli", &goal) == EOF) return 1;
     if (root == NULL) return 1;
@@ -127,7 +143,26 @@ int path_planner() {
             if (explore_direct(root) == 1) return 1;
         }
     } else {
-        if (explore_inverse() == 1) return 1;
+        flag = 0;
+        while(1) {
+            current_length =0;
+            while (explore_inverse(root) != 1) {
+                if (to_reach == start) {
+                    flag = 1;
+                    break;
+                }
+            }
+            if (flag == 0) {
+                if (solution != NULL) return 0;
+                else return 1;
+            }else{
+                if (solution == NULL){
+
+                }else{
+
+                }
+            }
+        }
     }
     printf("%lli", solution->data);
     tmp_sol = solution->next;
@@ -136,14 +171,17 @@ int path_planner() {
         tmp_sol = tmp_sol->next;
     }
     printf("\n");
+    free(stack);
+    stack = NULL;
     return 0;
 }
 
 int explore_direct(struct Station *node) {
     if (node != NULL) {
-        if (node->data >= start && node->data < to_reach && node->data + node->cars[0] >= to_reach) {
+        if (node->data >= start && node->data < to_reach && node->data + node->cars[0] >= to_reach && (node->visited == -1 || node->visited >= current_length)) {
             add_list(node->data);
             to_reach = node->data;
+            current_length++;
             return 0;
         }
         if (explore_direct(node->left) == 0) return 0;
@@ -152,27 +190,36 @@ int explore_direct(struct Station *node) {
     return 1;
 }
 
-int explore_inverse() {
-    curr = getStation(root, start);
-    to_reach = goal;
-    while (explore_inverse_function(root) != 1);
-    return solution==NULL;
-}
-
-int explore_inverse_function(struct Station *node) {
+int explore_inverse(struct Station *node) {
     if (node != NULL) {
         if (node->data <= start && node->data > to_reach && node->data - node->cars[0] <= to_reach) {
-            add_list(node->data);
+            current_length++;
+            add_path(node->data);
             to_reach = node->data;
-            node->visited = current_length;
             return 0;
         }
-        current_length++;
         if (explore_direct(node->left) == 0) return 0;
         if (explore_direct(node->right) == 0) return 0;
-        current_length--;
     }
     return 1;
+}
+
+void create_stack(struct Station *node){
+    if (node != NULL) {
+        inOrderTraversal(node->right);
+        if(node->data >= goal && node->data <= start) add_stack(node->data);
+        inOrderTraversal(node->left);
+    }
+}
+
+void add_stack(long long data) {
+    struct StackNode *tmp = NULL;
+    tmp = (struct StackNode *) malloc(sizeof(struct StackNode));
+    if (tmp == NULL) return;
+    if (stack != NULL) tmp->next = stack;
+    else tmp->next = NULL;
+    tmp->data = data;
+    stack = tmp;
 }
 
 int add_station() {
@@ -532,6 +579,16 @@ void add_list(long long data) {
     else tmp->next = NULL;
     tmp->data = data;
     solution = tmp;
+}
+
+void add_path(long long data) {
+    struct Solution *tmp = NULL;
+    tmp = (struct Solution *) malloc(sizeof(struct Solution));
+    if (tmp == NULL) return;
+    if (path != NULL) tmp->next = path;
+    else tmp->next = NULL;
+    tmp->data = data;
+    path = tmp;
 }
 
 struct Station *getStation(struct Station *node, long long data) {

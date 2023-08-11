@@ -48,9 +48,9 @@ int path_planner();
 
 int explore_direct(struct Station *);
 
-int explore_inverse();
+int explore_reverse();
 
-void explore_inverse_function(struct Station *);
+void explore_reverse_function(struct Station *);
 
 struct Station *createStation(long long);
 
@@ -146,7 +146,7 @@ int path_planner() {
         flag = 0;
         while(1) {
             current_length =0;
-            while (explore_inverse(root) != 1) {
+            while (explore_reverse(root) != 1) {
                 if (to_reach == start) {
                     flag = 1;
                     break;
@@ -190,7 +190,7 @@ int explore_direct(struct Station *node) {
     return 1;
 }
 
-int explore_inverse(struct Station *node) {
+int explore_reverse(struct Station *node) {
     if (node != NULL) {
         if (node->data <= start && node->data > to_reach && node->data - node->cars[0] <= to_reach) {
             current_length++;

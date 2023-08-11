@@ -86,7 +86,9 @@ void add_list(long long);
 
 void add_path(long long);
 
-void copy_list(struct Solution *, struct Solution *);
+struct Solution *copy_list(struct Solution *);
+
+void resetter(struct Station *);
 
 int main() {
     while (get_input() == 0) {
@@ -121,8 +123,8 @@ int main() {
 }
 
 int path_planner() {
-    struct Solution *tmp_sol;
-    int direction, flag;
+    struct Solution *tmp_sol, *tmp_path;
+    int direction, flag, end = 0;
     if (fscanf(stdin, "%lli", &start) == EOF) return 1;
     if (fscanf(stdin, "%lli", &goal) == EOF) return 1;
     if (root == NULL) return 1;
@@ -132,20 +134,24 @@ int path_planner() {
         return 0;
     }
     free(solution);
+    free(path);
+    path = NULL;
     solution = NULL;
-    add_list(goal);
+    add_path(goal);
     to_reach = goal;
     curr = root;
     direction = 1;
     if (start > goal) direction = -1;
     if (direction == 1) {
+        add_list(goal);
         while (solution->data != start) {
             if (explore_direct(root) == 1) return 1;
         }
     } else {
-        flag = 0;
-        while(1) {
-            current_length =0;
+        resetter(root);
+        while (end == 0) {
+            flag = 0;
+            current_length = 0;
             while (explore_reverse(root) != 1) {
                 if (to_reach == start) {
                     flag = 1;
@@ -153,16 +159,34 @@ int path_planner() {
                 }
             }
             if (flag == 0) {
-                if (solution != NULL) return 0;
-                else return 1;
-            }else{
-                if (solution == NULL){
-
-                }else{
-
+                end = 1;
+            } else {
+                if (solution == NULL) {
+                    solution = copy_list(path);
+                } else {
+                    if (max_length == -1 || max_length > current_length) {
+                        solution = copy_list(path);
+                    } else if (max_length == current_length) {
+                        tmp_sol = solution;
+                        tmp_path = path;
+                        flag = 0; //0 uguali, 1 sol, -1 path
+                        while (tmp_sol != NULL && tmp_path != NULL) {
+                            if (tmp_sol->data < tmp_path->data) flag = 1;
+                            else if (tmp_sol->data > tmp_path->data) flag = -1;
+                            tmp_sol = tmp_sol->next;
+                            tmp_path = tmp_path->next;
+                        }
+                        if (flag == -1) {
+                            free(solution);
+                            solution = copy_list(path);
+                        }
+                    }
+                    free(path);
+                    add_path(goal);
                 }
             }
         }
+        if (solution == NULL) return 1;
     }
     printf("%lli", solution->data);
     tmp_sol = solution->next;
@@ -178,8 +202,9 @@ int path_planner() {
 
 int explore_direct(struct Station *node) {
     if (node != NULL) {
-        if (node->data >= start && node->data < to_reach && node->data + node->cars[0] >= to_reach && (node->visited == -1 || node->visited >= current_length)) {
-            add_list(node->data);
+        if (node->data >= start && node->data < to_reach && node->data + node->cars[0] >= to_reach ){
+            add_path(node->data);
+            node->visited = current_length;
             to_reach = node->data;
             current_length++;
             return 0;
@@ -192,23 +217,46 @@ int explore_direct(struct Station *node) {
 
 int explore_reverse(struct Station *node) {
     if (node != NULL) {
-        if (node->data <= start && node->data > to_reach && node->data - node->cars[0] <= to_reach) {
+        if (node->data <= start && node->data > to_reach && node->data - node->cars[0] <= to_reach &&
+            (node->visited == -1 || node->visited >= current_length)) {
             current_length++;
             add_path(node->data);
             to_reach = node->data;
             return 0;
         }
-        if (explore_direct(node->left) == 0) return 0;
-        if (explore_direct(node->right) == 0) return 0;
+        if (explore_reverse(node->left) == 0) return 0;
+        if (explore_reverse(node->right) == 0) return 0;
     }
     return 1;
 }
 
-void create_stack(struct Station *node){
+void resetter(struct Station *node) {
     if (node != NULL) {
-        inOrderTraversal(node->right);
-        if(node->data >= goal && node->data <= start) add_stack(node->data);
-        inOrderTraversal(node->left);
+        resetter(node->left);
+        node->visited = -1;
+        resetter(node->right);
+    }
+}
+
+struct Solution *copy_list(struct Solution *node_p) {
+    struct Solution *tmp_s, *head;
+    tmp_s = (struct Solution *) malloc(sizeof(struct Solution));
+    head = tmp_s;
+    while (node_p != NULL) {
+        tmp_s->data = node_p->data;
+        tmp_s->next = NULL;
+        node_p = node_p->next;
+        if (node_p != NULL) tmp_s->next = (struct Solution *) malloc(sizeof(struct Solution));
+        tmp_s = tmp_s->next;
+    }
+    return head;
+}
+
+void create_stack(struct Station *node) {
+    if (node != NULL) {
+        create_stack(node->right);
+        if (node->data >= goal && node->data <= start) add_stack(node->data);
+        create_stack(node->left);
     }
 }
 

@@ -23,10 +23,10 @@ struct Station {
 
 struct Station *root = NULL;
 struct Station *curr = NULL;
-long long most_distant_station = -1, start, goal, to_reach;
+long long most_distant_station = -1, start, goal, to_reach, to_reach_tmp, to_exclude;
 struct Solution *solution = NULL, *path = NULL;
 char input[30];
-int current_length, max_length;
+int current_length, max_length, to_exclude_index;
 
 int add_station();
 
@@ -42,7 +42,7 @@ int explore_direct(struct Station *);
 
 int explore_reverse();
 
-void explore_reverse_function(struct Station *);
+int explore_reverse_new_path(struct Station *);
 
 struct Station *createStation(long long);
 
@@ -123,7 +123,7 @@ int main() {
 
 int path_planner() {
     struct Solution *tmp_sol;
-    int direction;
+    int direction, i;
     if (fscanf(stdin, "%lli", &start) == EOF) return 1;
     if (fscanf(stdin, "%lli", &goal) == EOF) return 1;
     if (root == NULL) return 1;
@@ -155,110 +155,61 @@ int path_planner() {
         printf("\n");
         return 0;
     } else {
+        struct Solution *inverse_x = NULL, *inverse_y = NULL, *inverse_z = NULL;
+        max_length = 0;
         add_list(goal);
         while (solution->data != start) {
+            max_length++;
             if (explore_reverse(root) == 1) return 1;
         }
+
         if (solution == NULL) return 1;
 
-        struct Solution *tmp_s;
-        struct Solution *first;
-        struct Solution *middle;
-        struct Solution *last;
-        struct Station *tmp_middle = NULL, *tmp_first = NULL, *tmp_last = NULL;
-        tmp_s = solution;
-        first = tmp_s;
-        middle = first->next;
-        if (middle->next != NULL) {
-            last = middle->next;
-            while (last != NULL) {
-                tmp_first = getStation(root, first->data);
-                if (tmp_first->data - tmp_first->cars[0] <= last->data) {
-                    free(middle);
-                    first->next = last;
+        to_exclude_index = 0;
+        while (to_exclude != start) {
+            tmp_sol = copy_list(solution);
+            inverse_x = reverseList(tmp_sol);
+            inverse_y = inverse_x;
+            for (i = 0; i < to_exclude_index; i++) inverse_x = inverse_x->next;
+            to_exclude = inverse_x->next->data;
+            to_reach = inverse_x->data;
+            curr = findMaxLessThanValue(root, to_exclude);
 
-                    first = last;
-                    middle = last->next;
-                    if (middle == NULL) break;
-                    last = middle->next;
-
-                } else {
-                    first = middle;
-                    middle = last;
-                    last = last->next;
-                }
-            }
-        }
-        solution = tmp_s;
-        tmp_s = reverseList(solution);
-        first = tmp_s;
-        middle = first->next;
-        if (middle->next != NULL) {
-            last = middle->next;
-            while (last != NULL) {
-
-                tmp_middle = findMaxLessThanValue(root, middle->data);
-                tmp_last = getStation(root, last->data);
-                while (tmp_middle != NULL && tmp_middle->data > first->data) {
-                    if (tmp_middle->data - tmp_middle->cars[0] <= first->data &&
-                        tmp_last->data - tmp_last->cars[0] <= tmp_middle->data) {
-                        middle->data = tmp_middle->data;
+            free(path);
+            path = NULL;
+            while (curr != NULL && curr->data > to_reach) {
+                free(path);
+                path = NULL;
+                if (curr->data - curr->cars[0] <= to_reach) {
+                    to_reach_tmp = curr->data;
+                    current_length = to_exclude_index;
+                    inverse_z = inverse_y;
+                    for (i = 0; i <= to_exclude_index; i++) {
+                        add_path(inverse_z->data);
+                        inverse_z = inverse_z->next;
                     }
-                    tmp_middle = findMaxLessThanValue(root, tmp_middle->data);
+                    add_path(curr->data);
+
+                    while (path != NULL && path->data != start) {
+                        current_length++;
+
+                        if (current_length >= max_length || explore_reverse_new_path(root) == 1) {
+                            free(path);
+                            path = NULL;
+                            current_length = 0;
+                        }
+                    }
+
+                    if (path != NULL) {
+                        free(solution);
+                        solution = copy_list(path);
+                    }
                 }
-                first = middle;
-                middle = last;
-                last = last->next;
+                curr = findMaxLessThanValue(root, curr->data);
             }
+            to_exclude_index++;
         }
-        solution = reverseList(tmp_s);
-        tmp_s = solution;
-        first = tmp_s;
-        middle = first->next;
-        if (middle->next != NULL) {
-            last = middle->next;
-            while (last != NULL) {
-                tmp_first = getStation(root, first->data);
-                if (tmp_first->data - tmp_first->cars[0] <= last->data) {
-                    free(middle);
-                    first->next = last;
 
-                    first = last;
-                    middle = last->next;
-                    if (middle == NULL) break;
-                    last = middle->next;
-
-                } else {
-                    first = middle;
-                    middle = last;
-                    last = last->next;
-                }
-            }
-        }
-        tmp_s = solution;
-        first = tmp_s;
-        middle = first->next;
-        if (middle->next != NULL) {
-            last = middle->next;
-            while (last != NULL) {
-                tmp_first = getStation(root, first->data);
-                if (tmp_first->data - tmp_first->cars[0] <= last->data) {
-                    free(middle);
-                    first->next = last;
-
-                    first = last;
-                    middle = last->next;
-                    if (middle == NULL) break;
-                    last = middle->next;
-
-                } else {
-                    first = middle;
-                    middle = last;
-                    last = last->next;
-                }
-            }
-        }
-        solution = tmp_s;
 
         printf("%lli", solution->data);
         tmp_sol = solution->next;
@@ -272,6 +223,20 @@ int path_planner() {
 
 }
 
+int explore_reverse_new_path(struct Station *node) {
+    if (node != NULL) {
+        if (explore_reverse_new_path(node->right) == 0) return 0;
+        if (node->data <= start && node->data > to_reach_tmp && node->data - node->cars[0] <= to_reach_tmp) {
+            if (node->data != to_exclude && node->data != curr->data) {
+                add_path(node->data);
+                to_reach_tmp = node->data;
+                return 0;
+            }
+        }
+        if (explore_reverse_new_path(node->left) == 0) return 0;
+    }
+    return 1;
+}
 
 int explore_direct(struct Station *node) {
     if (node != NULL) {
@@ -298,6 +263,7 @@ int explore_reverse(struct Station *node) {
     }
     return 1;
 }
+
 
 struct Solution *reverseList(struct Solution *head) {
     struct Solution *prev = NULL;
@@ -421,10 +387,12 @@ int remove_car() {
     if (fscanf(stdin, "%lli", &distance) == EOF) return 1;
     if (fscanf(stdin, "%lli", &autonomy) == EOF) return 1;
     tmp = getStation(root, distance);
+
     if (tmp == NULL) return 1;
     for (i = 0; tmp->cars[i] != 0 && i < 512; i++) {
         if (tmp->cars[i] > autonomy) tmp_cars[i] = tmp->cars[i];
         if (tmp->cars[i] == autonomy) first = 0;
+
         if (tmp->cars[i] < autonomy) {
             if (first == 0) {
                 tmp_cars[i - 1] = tmp->cars[i];
@@ -660,37 +628,39 @@ void deleteFixup(struct Station *x) {
         x->color = BLACK;
 }
 
-struct Station *deleteStation(struct Station *root, long long data) {
-    if (root == NULL) {
-        return root;
+struct Station *deleteStation(struct Station *node, long long data) {
+    if (node == NULL) {
+        return node;
     }
 
-    if (data < root->data) {
-        root->left = deleteStation(root->left, data);
-    } else if (data > root->data) {
-        root->right = deleteStation(root->right, data);
+    if (data < node->data) {
+        node->left = deleteStation(node->left, data);
+    } else if (data > node->data) {
+        node->right = deleteStation(node->right, data);
     } else {
-        if (root->left == NULL) {
-            struct Station *temp = root->right;
+        if (node->left == NULL) {
+            struct Station *temp = node->right;
             if (temp != NULL) {
-                temp->parent = root->parent;
+                temp->parent = node->parent;
             }
-            free(root);
+            free(node);
             return temp;
-        } else if (root->right == NULL) {
-            struct Station *temp = root->left;
+        } else if (node->right == NULL) {
+            struct Station *temp = node->left;
             if (temp != NULL) {
                 temp->parent = root->parent;
             }
-            free(root);
+            free(node);
             return temp;
         }
 
-        struct Station *temp = findMin(root->right);
-        root->data = temp->data;
-        root->right = deleteStation(root->right, temp->data);
+        struct Station *temp = findMin(node->right);
+        node->data = temp->data;
+        int i = 0;
+        for (i = 0; i < 512; i++) node->cars[i] = temp->cars[i];
+        node->right = deleteStation(node->right, temp->data);
     }
-    return root;
+    return node;
 }
 
 struct Station *findMin(struct Station *node) {
